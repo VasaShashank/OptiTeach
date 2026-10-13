@@ -46,12 +46,23 @@ export interface UnitDraft {
   unit_number: number;
   title: string;
   description?: string;
+  hours?: number;
   topics: TopicDraft[];
 }
 
 export interface ExtractedCurriculum {
   course_name: string;
   course_code: string;
+  semester?: string;
+  category?: string;
+  department?: string;
+  course_type?: string;
+  credits?: string;
+  cie_marks?: string;
+  see_marks?: string;
+  see_duration?: string;
+  reference_books?: string[];
+  rubric_summary?: string;
   outcomes: OutcomeDraft[];
   units: UnitDraft[];
   total_hours?: number;

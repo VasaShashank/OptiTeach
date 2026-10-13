@@ -23,3 +23,8 @@ class BaseSyllabusExtractor(ABC):
     def extract_from_pdf(self, pdf_bytes: bytes) -> ExtractorResult:
         """Extract structured curriculum from PDF file bytes"""
         pass
+
+    @abstractmethod
+    def extract_from_image(self, image_bytes: bytes) -> ExtractorResult:
+        """Extract structured curriculum from image file bytes"""
+        pass

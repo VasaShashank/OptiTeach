@@ -103,11 +103,18 @@ class HybridSyllabusExtractor(BaseSyllabusExtractor):
             )
 
     def extract_from_pdf(self, pdf_bytes: bytes) -> ExtractorResult:
+        from app.nlp.ocr import extract_text_from_pdf
         try:
-            from pypdf import PdfReader
-            import io
-            reader = PdfReader(io.BytesIO(pdf_bytes))
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            text = extract_text_from_pdf(pdf_bytes)
+        except Exception:
+            text = ""
+
+        return self.extract_from_text(text)
+
+    def extract_from_image(self, image_bytes: bytes) -> ExtractorResult:
+        from app.nlp.ocr import extract_text_from_image
+        try:
+            text = extract_text_from_image(image_bytes)
         except Exception:
             text = ""
 
