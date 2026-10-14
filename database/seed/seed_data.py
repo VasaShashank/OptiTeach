@@ -85,6 +85,7 @@ def seed_database():
         )
         db.add(course)
         db.flush()
+        pd = course.period_duration  # Use period_duration as the unit for topic time estimates
 
         # Section
         section = Section(
@@ -180,9 +181,9 @@ def seed_database():
         u1 = Unit(course_id=course.id, unit_number=1, title="Database Architecture & ER Modeling", order_index=1)
         db.add(u1)
         db.flush()
-        t1 = Topic(unit_id=u1.id, title="DBMS Architecture & Data Independence", order_index=1, estimated_minutes=110, allocated_minutes=110, status="completed")
-        t2 = Topic(unit_id=u1.id, title="Entity-Relationship (ER) Modeling", order_index=2, estimated_minutes=165, allocated_minutes=165, status="completed")
-        t3 = Topic(unit_id=u1.id, title="Relational Model & Mapping", order_index=3, estimated_minutes=110, allocated_minutes=110, status="completed")
+        t1 = Topic(unit_id=u1.id, title="DBMS Architecture & Data Independence", order_index=1, estimated_minutes=pd * 2, allocated_minutes=pd * 2, status="completed")
+        t2 = Topic(unit_id=u1.id, title="Entity-Relationship (ER) Modeling", order_index=2, estimated_minutes=pd * 3, allocated_minutes=pd * 3, status="completed")
+        t3 = Topic(unit_id=u1.id, title="Relational Model & Mapping", order_index=3, estimated_minutes=pd * 2, allocated_minutes=pd * 2, status="completed")
         db.add_all([t1, t2, t3])
         db.flush()
 
@@ -197,8 +198,8 @@ def seed_database():
         u2 = Unit(course_id=course.id, unit_number=2, title="Relational Query Languages (Algebra & SQL)", order_index=2)
         db.add(u2)
         db.flush()
-        t4 = Topic(unit_id=u2.id, title="Relational Algebra Operators", order_index=1, estimated_minutes=165, allocated_minutes=165, status="completed")
-        t5 = Topic(unit_id=u2.id, title="SQL DDL & Complex Queries", order_index=2, estimated_minutes=220, allocated_minutes=220, status="completed")
+        t4 = Topic(unit_id=u2.id, title="Relational Algebra Operators", order_index=1, estimated_minutes=pd * 3, allocated_minutes=pd * 3, status="completed")
+        t5 = Topic(unit_id=u2.id, title="SQL DDL & Complex Queries", order_index=2, estimated_minutes=pd * 4, allocated_minutes=pd * 4, status="completed")
         db.add_all([t4, t5])
         db.flush()
 
@@ -217,8 +218,8 @@ def seed_database():
         u3 = Unit(course_id=course.id, unit_number=3, title="Relational Database Design Theory", order_index=3)
         db.add(u3)
         db.flush()
-        t6 = Topic(unit_id=u3.id, title="Functional Dependencies & Keys", order_index=1, estimated_minutes=165, allocated_minutes=165, status="completed")
-        t7 = Topic(unit_id=u3.id, title="Relational Normalization (1NF, 2NF, 3NF, BCNF)", order_index=2, estimated_minutes=220, allocated_minutes=220, status="in_progress")
+        t6 = Topic(unit_id=u3.id, title="Functional Dependencies & Keys", order_index=1, estimated_minutes=pd * 3, allocated_minutes=pd * 3, status="completed")
+        t7 = Topic(unit_id=u3.id, title="Relational Normalization (1NF, 2NF, 3NF, BCNF)", order_index=2, estimated_minutes=pd * 4, allocated_minutes=pd * 4, status="in_progress")
         db.add_all([t6, t7])
         db.flush()
 
@@ -243,8 +244,8 @@ def seed_database():
         u4 = Unit(course_id=course.id, unit_number=4, title="Transaction Processing & Concurrency", order_index=4)
         db.add(u4)
         db.flush()
-        t8 = Topic(unit_id=u4.id, title="Transaction Concepts & Serializability", order_index=1, estimated_minutes=110, allocated_minutes=110, status="pending")
-        t9 = Topic(unit_id=u4.id, title="Concurrency Control Protocols & Recovery", order_index=2, estimated_minutes=165, allocated_minutes=165, status="pending")
+        t8 = Topic(unit_id=u4.id, title="Transaction Concepts & Serializability", order_index=1, estimated_minutes=pd * 2, allocated_minutes=pd * 2, status="pending")
+        t9 = Topic(unit_id=u4.id, title="Concurrency Control Protocols & Recovery", order_index=2, estimated_minutes=pd * 3, allocated_minutes=pd * 3, status="pending")
         db.add_all([t8, t9])
         db.flush()
 
@@ -262,8 +263,8 @@ def seed_database():
         u5 = Unit(course_id=course.id, unit_number=5, title="Storage, Indexing & Query Optimization", order_index=5)
         db.add(u5)
         db.flush()
-        t10 = Topic(unit_id=u5.id, title="File Organization & B+ Tree Indexing", order_index=1, estimated_minutes=165, allocated_minutes=165, status="pending")
-        t11 = Topic(unit_id=u5.id, title="Query Processing & Heuristic Optimization", order_index=2, estimated_minutes=165, allocated_minutes=165, status="pending")
+        t10 = Topic(unit_id=u5.id, title="File Organization & B+ Tree Indexing", order_index=1, estimated_minutes=pd * 3, allocated_minutes=pd * 3, status="pending")
+        t11 = Topic(unit_id=u5.id, title="Query Processing & Heuristic Optimization", order_index=2, estimated_minutes=pd * 3, allocated_minutes=pd * 3, status="pending")
         db.add_all([t10, t11])
         db.flush()
 

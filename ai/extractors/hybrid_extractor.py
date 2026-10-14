@@ -73,7 +73,7 @@ class HybridSyllabusExtractor(BaseSyllabusExtractor):
                     "topics": [
                         {
                             "title": "Fundamental Principles & Architecture",
-                            "estimated_minutes": 110,
+                            "estimated_minutes": 120,  # 2 × 60-min default; ILP snaps to actual period_duration
                             "concepts": [
                                 {
                                     "name": "Foundational Overview",
