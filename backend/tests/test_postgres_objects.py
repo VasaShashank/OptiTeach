@@ -35,8 +35,8 @@ def concept_id(conn, name):
 
 def test_total_available_minutes_is_generated(conn):
     cid = course_id(conn)
-    conn.execute(text("UPDATE courses SET total_classes = 30 WHERE id = :c"), {"c": cid})
-    assert scalar(conn, "SELECT total_available_minutes FROM courses WHERE id = :c", c=cid) == 30 * 55
+    pd = scalar(conn, "SELECT period_duration FROM courses WHERE id = :c", c=cid)
+    assert scalar(conn, "SELECT total_available_minutes FROM courses WHERE id = :c", c=cid) == 30 * pd
 
     with pytest.raises(DBAPIError, match="generated column"):
         with conn.begin_nested():

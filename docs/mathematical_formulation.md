@@ -8,7 +8,7 @@ OptiTeach formulates curriculum time distribution as a **Mixed-Integer Linear Pr
 
 ### Sets and Indices
 - $i \in \{1, 2, \dots, N\}$: Set of syllabus topics.
-- $P$: Duration of a single class period in minutes (e.g., $P = 55$).
+- $P$: Duration of a single class period in minutes (standardized to $P = 60$).
 - $T_{\text{avail}}$: Total available semester instructional time in minutes ($T_{\text{avail}} = \text{total\_classes} \times P$).
 
 ### Constants & Weights

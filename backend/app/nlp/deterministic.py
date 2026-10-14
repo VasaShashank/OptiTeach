@@ -476,6 +476,11 @@ class DeterministicNLPProvider(NLPProvider):
                     filtered_lines.append(l_clean)
 
             topics = self._parse_topics_from_lines(filtered_lines, unit_num, all_concepts_flat)
+            if unit_hours and topics:
+                # Distribute extracted unit hours across parsed topics
+                per_topic_min = max(60, int((unit_hours * 60) / len(topics)))
+                for t in topics:
+                    t.estimated_minutes = per_topic_min
 
             # Derive concise, descriptive Unit Title
             if topics:

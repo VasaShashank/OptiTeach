@@ -69,9 +69,9 @@ def test_class_optimizer_exact_period_duration_sum():
         class_plan = class_optimizer.optimize_next_class(db, course.id, session_number=15)
         
         # Strict Invariant: Sum of phase durations MUST equal period duration
-        assert class_plan.period_duration == 55
+        assert class_plan.period_duration == course.period_duration
         phase_sum = sum(p.duration_minutes for p in class_plan.phases)
-        assert phase_sum == 55, f"Phase sum was {phase_sum}, expected 55"
+        assert phase_sum == course.period_duration, f"Phase sum was {phase_sum}, expected {course.period_duration}"
         
         # Must detect revision requirement due to Quiz 2 weak performance
         assert class_plan.revision_needed is True
@@ -90,7 +90,7 @@ def test_assessment_feedback_reoptimization(api):
         resp = api.post(f"/api/courses/{course.id}/optimize-next-class?session_number=15")
         assert resp.status_code == 200
         plan = resp.json()
-        assert plan["total_phase_minutes"] == 55
+        assert plan["total_phase_minutes"] == course.period_duration
         assert len(plan["phases"]) >= 4
 
         # Verify DBMS Insights queries
