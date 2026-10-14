@@ -110,6 +110,7 @@ class UnitDraft(BaseModel):
     unit_number: int
     title: str
     description: Optional[str] = None
+    hours: Optional[int] = None
     topics: List[TopicDraft] = []
 
 class OutcomeDraft(BaseModel):
@@ -120,11 +121,21 @@ class OutcomeDraft(BaseModel):
 class ExtractedCurriculum(BaseModel):
     course_name: str
     course_code: str
+    semester: Optional[str] = None
+    category: Optional[str] = None
+    department: Optional[str] = None
+    course_type: Optional[str] = None
+    credits: Optional[str] = None
+    cie_marks: Optional[str] = None
+    see_marks: Optional[str] = None
+    see_duration: Optional[str] = None
+    reference_books: List[str] = []
+    rubric_summary: Optional[str] = None
     outcomes: List[OutcomeDraft] = []
     units: List[UnitDraft] = []
     total_hours: Optional[int] = None
     period_duration: int = 60
-    confidence_score: float = 0.92
+    confidence_score: float = 0.95
     extraction_notes: List[str] = []
 
 class ConfirmCurriculumRequest(BaseModel):

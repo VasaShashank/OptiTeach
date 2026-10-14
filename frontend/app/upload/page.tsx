@@ -89,6 +89,9 @@ export default function UploadPage() {
       if (result.course_code) {
         setCourseCode(result.course_code);
       }
+      if (result.semester) {
+        setSemester(result.semester);
+      }
       if (result.total_hours) {
         setTotalClasses(result.total_hours);
       }
@@ -245,7 +248,7 @@ export default function UploadPage() {
             <input
               ref={fileRef}
               type="file"
-              accept=".pdf,.txt,.md"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
               style={{ display: "none" }}
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -257,7 +260,7 @@ export default function UploadPage() {
             <h2 style={{ fontSize: "1.05rem", marginBottom: 6 }}>
               {loading ? "Reading the syllabus…" : "Drop a syllabus file here, or click to choose one"}
             </h2>
-            <p style={{ color: "var(--pencil)" }}>PDF, plain text (.txt) or Markdown (.md)</p>
+            <p style={{ color: "var(--pencil)" }}>PDF, PNG/JPEG images, plain text (.txt) or Markdown (.md)</p>
           </div>
 
           <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column" }}>
@@ -370,12 +373,95 @@ Normal forms: 1NF, 2NF, 3NF, BCNF`}
                     disabled={confirming || (targetMode === "existing" && !targetCourseId)}
                   >
                     {confirming
-                      ? <><div className="spinner" /> Saving…</>
-                      : <><Check size={16} /> {targetMode === "new" ? "Create course and save" : "Save to course"}</>}
+                       ? <><div className="spinner" /> Saving…</>
+                       : <><Check size={16} /> {targetMode === "new" ? "Create course and save" : "Save to course"}</>}
                   </button>
                 )}
               </div>
             </div>
+
+            {/* Deduced Academic Parameters from Syllabus */}
+            {(curriculum.category || curriculum.credits || curriculum.cie_marks || curriculum.department || curriculum.semester || curriculum.course_type) && (
+              <div
+                style={{
+                  background: "var(--surface-sunk)",
+                  borderRadius: "var(--radius-md)",
+                  padding: 16,
+                  marginBottom: 20,
+                  border: "1px solid var(--rule)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span className="badge badge-primary" style={{ fontWeight: 700 }}>Deduced Parameters</span>
+                  <span style={{ fontSize: "0.85rem", color: "var(--pencil)" }}>
+                    Extracted automatically from course syllabus header &amp; rubrics
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: 12,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {curriculum.semester && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Semester</span>
+                      <strong>{curriculum.semester}</strong>
+                    </div>
+                  )}
+                  {curriculum.category && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Category</span>
+                      <strong>{curriculum.category}</strong>
+                    </div>
+                  )}
+                  {curriculum.department && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Applicable Department / Branches</span>
+                      <strong>{curriculum.department}</strong>
+                    </div>
+                  )}
+                  {curriculum.course_type && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Course Type</span>
+                      <strong>{curriculum.course_type}</strong>
+                    </div>
+                  )}
+                  {curriculum.credits && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Credits (L:T:P)</span>
+                      <strong>{curriculum.credits}</strong>
+                    </div>
+                  )}
+                  {curriculum.total_hours && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Total Syllabus Hours</span>
+                      <strong>{curriculum.total_hours} Periods (1 hr / 60 min)</strong>
+                    </div>
+                  )}
+                  {curriculum.cie_marks && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Continuous Internal Evaluation (CIE)</span>
+                      <strong>{curriculum.cie_marks}</strong>
+                    </div>
+                  )}
+                  {curriculum.see_marks && (
+                    <div>
+                      <span style={{ color: "var(--pencil)", display: "block", fontSize: "0.78rem" }}>Semester End Exam (SEE)</span>
+                      <strong>{curriculum.see_marks} {curriculum.see_duration ? `(${curriculum.see_duration})` : ""}</strong>
+                    </div>
+                  )}
+                </div>
+                {curriculum.rubric_summary && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--rule)", fontSize: "0.85rem", color: "var(--pencil)" }}>
+                    <strong style={{ color: "var(--graphite)" }}>Evaluation Rubric: </strong>
+                    {curriculum.rubric_summary}
+                  </div>
+                )}
+              </div>
+            )}
 
             <fieldset style={{ border: "none", padding: 0, margin: "0 0 18px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
               <legend style={{ fontWeight: 700, marginBottom: 8 }}>Where should it go?</legend>
@@ -467,6 +553,20 @@ Normal forms: 1NF, 2NF, 3NF, BCNF`}
             </section>
           )}
 
+          {curriculum.reference_books && curriculum.reference_books.length > 0 && (
+            <section className="card" style={{ padding: 20, marginBottom: 20 }}>
+              <h2 style={{ fontSize: "1.05rem" }}>Prescribed Reference Books &amp; Textbooks</h2>
+              <p style={{ color: "var(--pencil)", margin: "4px 0 14px" }}>
+                Identified from the syllabus bibliography for curriculum and lesson planning references.
+              </p>
+              <ol style={{ paddingLeft: 20, margin: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: "0.92rem" }}>
+                {curriculum.reference_books.map((b: string, i: number) => (
+                  <li key={i} style={{ lineHeight: 1.5 }}>{b}</li>
+                ))}
+              </ol>
+            </section>
+          )}
+
           <section>
             <h2 style={{ fontSize: "1.05rem", marginBottom: 12 }}>Units and topics</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -492,7 +592,10 @@ Normal forms: 1NF, 2NF, 3NF, BCNF`}
                     >
                       {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                       <strong>Unit {unit.unit_number}: {unit.title}</strong>
-                      <span style={{ marginLeft: "auto", color: "var(--pencil)" }}>{unit.topics.length} topics</span>
+                      <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                        {unit.hours ? <span className="badge badge-neutral" style={{ fontSize: "0.78rem" }}>{unit.hours} Hrs</span> : null}
+                        <span style={{ color: "var(--pencil)" }}>{unit.topics.length} topics</span>
+                      </span>
                     </button>
                     {open && (
                       <div style={{ padding: "4px 20px 16px" }}>

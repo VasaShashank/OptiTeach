@@ -28,7 +28,8 @@ from app.auth.security import get_current_user, get_current_teacher, get_accessi
 router = APIRouter(prefix="/courses", tags=["Courses & Optimization"], dependencies=[Depends(get_current_user)])
 
 MAX_SYLLABUS_BYTES = 5 * 1024 * 1024
-ALLOWED_SYLLABUS_SUFFIXES = (".pdf", ".txt", ".md")
+IMAGE_SYLLABUS_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
+ALLOWED_SYLLABUS_SUFFIXES = (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".txt", ".md")
 
 @router.get("", response_model=List[CourseOut])
 def list_courses(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -243,7 +244,7 @@ def update_course(
 async def read_syllabus_upload(file: UploadFile) -> bytes:
     """Bounded read with an extension allow-list; rejects oversized or unexpected files."""
     if not file.filename or not file.filename.lower().endswith(ALLOWED_SYLLABUS_SUFFIXES):
-        raise HTTPException(status_code=415, detail="Syllabus must be a .pdf, .txt or .md file")
+        raise HTTPException(status_code=415, detail="Syllabus must be a PDF, image (.png, .jpg, .webp), or text file (.txt, .md)")
     content = await file.read(MAX_SYLLABUS_BYTES + 1)
     if len(content) > MAX_SYLLABUS_BYTES:
         raise HTTPException(status_code=413, detail="Syllabus file exceeds the 5 MB limit")
@@ -265,13 +266,15 @@ async def upload_course_syllabus(
             filename = file.filename.lower()
             if filename.endswith(".pdf"):
                 curriculum = nlp_provider.extract_from_pdf(content_bytes)
+            elif filename.endswith(IMAGE_SYLLABUS_SUFFIXES):
+                curriculum = nlp_provider.extract_from_image(content_bytes)
             else:
                 text = content_bytes.decode("utf-8", errors="ignore")
                 curriculum = nlp_provider.extract_from_text(text)
         elif raw_text and raw_text.strip():
             curriculum = nlp_provider.extract_from_text(raw_text.strip())
         else:
-            raise HTTPException(status_code=400, detail="No syllabus content provided. Please upload a PDF or paste text.")
+            raise HTTPException(status_code=400, detail="No syllabus content provided. Please upload a PDF, image, or paste text.")
     except ValueError as ve:
         raise HTTPException(status_code=422, detail=str(ve)) from ve
     except Exception as e:
