@@ -10,6 +10,7 @@ Enforces pedagogical fairness:
 """
 from typing import Any, Dict, List, Optional
 import numpy as np
+from scipy.optimize import Bounds, LinearConstraint, milp
 
 class CurriculumILPSolver:
     """
@@ -35,12 +36,46 @@ class CurriculumILPSolver:
         total_needed = int(np.sum(need))
 
         # CASE 1: Finite or balanced budget (max_periods <= total_needed)
-        # Fair sharing under deficit: allocate periods to minimize weighted relative deficit squared.
-        # This prevents severe starvation of any topic (e.g. 1 out of 9 periods).
+        # Formulated as an exact Mixed-Integer Linear Program (MILP) via scipy.optimize.milp
+        # with piecewise linear diminishing marginal utility.
         if max_periods <= total_needed:
+            try:
+                c = []
+                lb = []
+                ub = []
+                topic_map = []
+                for i in range(n):
+                    nd = int(need[i])
+                    p = float(priority[i])
+                    for k in range(1, nd + 1):
+                        val = p * (2 * (nd - k) + 1) / (nd ** 2)
+                        c.append(-val)  # minimize negative utility -> maximize utility
+                        lb.append(1 if k == 1 else 0)  # at least 1 period per topic
+                        ub.append(1)
+                        topic_map.append(i)
+
+                c = np.array(c)
+                n_vars = len(c)
+                bounds = Bounds(lb, ub)
+                A_total = np.ones((1, n_vars))
+                constraints = LinearConstraint(A_total, lb=n, ub=max_periods)
+                integrality = np.ones(n_vars)
+
+                res = milp(c=c, integrality=integrality, bounds=bounds, constraints=constraints)
+                if res.success and res.x is not None:
+                    x_binary = np.rint(res.x).astype(int)
+                    periods = [0] * n
+                    for var_idx, bit in enumerate(x_binary):
+                        if bit == 1:
+                            periods[topic_map[var_idx]] += 1
+                    if sum(periods) * period_duration <= instructional_budget and all(p >= 1 for p in periods):
+                        return periods
+            except Exception:
+                pass
+
+            # Discrete fair fallback if SciPy MILP encounters numeric issues
             x = [min(1, int(nd)) for nd in need]
             remaining = max_periods - sum(x)
-
             while remaining > 0:
                 best_idx = None
                 best_gain = -1e9
