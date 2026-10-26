@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
-      <body style={{ minHeight: "100vh", display: "flex" }}>
+      <body style={{ minHeight: "100vh", display: "flex" }} suppressHydrationWarning>
         <AppShell>{children}</AppShell>
       </body>
     </html>

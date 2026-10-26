@@ -1,12 +1,12 @@
 import re
-import io
 import logging
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional
 from app.nlp.base import NLPProvider
 from app.nlp.ocr import extract_text_from_image, extract_text_from_pdf
 from app.schemas.schemas import (
     ExtractedCurriculum, UnitDraft, TopicDraft, ConceptDraft, OutcomeDraft
 )
+from app.optimization.duration_assigner import duration_assigner
 
 logger = logging.getLogger("optiteach.nlp")
 
@@ -469,18 +469,19 @@ class DeterministicNLPProvider(NLPProvider):
 
             # Strip hours notation from lines
             filtered_lines: List[str] = []
-            for l in lines:
-                l_clean = re.sub(r"[\(\[]?\s*\d+\s*(?:Hours?|Hrs?|Periods?|L)\b[\)\]]?", "", l, flags=re.IGNORECASE).strip()
+            for line_item in lines:
+                l_clean = re.sub(r"[\(\[]?\s*\d+\s*(?:Hours?|Hrs?|Periods?|L)\b[\)\]]?", "", line_item, flags=re.IGNORECASE).strip()
                 l_clean = re.sub(r"^[\s\-:]+", "", l_clean).strip()
                 if l_clean:
                     filtered_lines.append(l_clean)
 
             topics = self._parse_topics_from_lines(filtered_lines, unit_num, all_concepts_flat)
             if unit_hours and topics:
-                # Distribute extracted unit hours across parsed topics
-                per_topic_min = max(60, int((unit_hours * 60) / len(topics)))
+                # Distribute extracted unit hours proportionally based on concept difficulty and type
                 for t in topics:
-                    t.estimated_minutes = per_topic_min
+                    t.estimated_minutes = duration_assigner.calculate_topic_estimated_minutes(
+                        t, period_duration=60, unit_hours=unit_hours, all_topics_in_unit=topics
+                    )
 
             # Derive concise, descriptive Unit Title
             if topics:
@@ -507,11 +508,14 @@ class DeterministicNLPProvider(NLPProvider):
                     )
                 ]
                 all_concepts_flat.append(concept_name)
+                est_m = duration_assigner.calculate_topic_estimated_minutes(
+                    TopicDraft(title=unit_title, concepts=concepts), period_duration=60
+                )
                 topics = [
                     TopicDraft(
                         title=unit_title,
                         description=f"Curriculum topic for {unit_title}",
-                        estimated_minutes=120,
+                        estimated_minutes=est_m,
                         concepts=concepts
                     )
                 ]
@@ -644,12 +648,16 @@ class DeterministicNLPProvider(NLPProvider):
                 prev_concept = c_name_clean
 
             if concepts:
-                topics.append(TopicDraft(
+                dummy_topic = TopicDraft(
                     title=clean_topic_title,
                     description=f"Instructional topic covering {clean_topic_title}",
-                    estimated_minutes=120,
+                    estimated_minutes=60,
                     concepts=concepts
-                ))
+                )
+                dummy_topic.estimated_minutes = duration_assigner.calculate_topic_estimated_minutes(
+                    dummy_topic, period_duration=60
+                )
+                topics.append(dummy_topic)
 
         return topics
 

@@ -73,17 +73,21 @@ The teacher configures a course (e.g., *CS355 Advanced Algorithms*, 45 periods o
 ### 2. The Curriculum Graph & Bottleneck Detection
 Concepts are assembled into an in-memory and database-backed **knowledge graph** (using NetworkX and recursive SQL CTEs). The system highlights **curriculum bottlenecks**: concepts that are heavily depended upon by subsequent units where student performance is lagging.
 
-### 3. Course-Level Time Allocation (Optimizer Level 1)
-The total semester duration (e.g., $45 \times 60 = 2700$ minutes) is partitioned using **Mixed-Integer Linear Programming (SciPy MILP)**:
-- Reserves 10% for revision and 8% for formal assessments.
-- Solves a discrete optimization problem balancing concept difficulty, importance weight, prerequisite depth, and real-time student mastery.
-- Flags time pressure (e.g., *"9 topics remaining with only 7 periods available"*).
+### 3. Realistic Duration Assigner & Course-Level Time Allocation (Optimizer Level 1)
+The total semester duration (standardized to $45 \times 60 = 2700$ minutes) is partitioned using an advanced pedagogical allocation engine:
+- **Pedagogical Duration Assigner (`duration_assigner.py`)**: Computes realistic suggested topic minutes from atomic concept typologies (conceptual, procedural, problem-solving, analytical), Bloom's Taxonomy cognitive depth (*Remember* through *Create*), and difficulty scores (1–5), snapped to whole 60-minute period multiples.
+- **Pedagogical Ceiling Protection**: Caps any single topic's estimated duration to a realistic maximum of 5 periods (300 minutes), preventing syllabus anomalies where 8+ concepts are agglomerated under one topic from consuming 20%+ of the semester.
+- **Teacher-Controllable Reserves**: Instructors can customize revision percentage (default 10%) and assessment percentage (default 6%) with live slider controls.
+- **Proportional Diminishing-Returns Fair Allocation (`ilp_solver.py`)**:
+  - *Under Deficit*: Minimizes weighted relative deficit squared, guaranteeing that no topic is starved (e.g. 1 out of 9 periods / 60 out of 540 min). All topics receive 75% to 100% of their suggested time.
+  - *Strict Non-Surplus Guarantee*: No topic is permitted to exceed its suggested time while other topics remain short of hours.
+  - *Under Surplus*: 100% satisfies every topic's need before surplus periods are awarded to high-priority topics.
 
 ### 4. Class-Level Phase Planning (Optimizer Level 2)
 For each individual 1-hour period (60 minutes), OptiTeach constructs a minute-by-minute phase schedule:
 - **Standard 60-Minute Period**: 5 min recap, 25 min explanation/lecture, 20 min worked examples, 10 min quiz/active check ($5+25+20+10 = 60$).
-- **Revision 60-Minute Period (when prerequisite $< 60\%$)**: 10 min targeted revision, 20 min explanation, 20 min worked examples, 10 min guided practice ($10+20+20+10 = 60$).
-- Phases strictly sum to the period duration (60 minutes).
+- **Revision 60-Minute Period (when prerequisite $< 60\%$)**: 10–15 min targeted revision, 20 min explanation, 20 min worked examples, 10 min guided practice ($15+20+15+10 = 60$).
+- Phases strictly sum to the period duration (60 minutes) in discrete 5-minute increments.
 - **Pedagogical Advisor**: Suggests teaching methods tailored to the concept's cognitive category and historical effectiveness.
 - Provides explicit, transparent pedagogical rationales for every recommendation.
 

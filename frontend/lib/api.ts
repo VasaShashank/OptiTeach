@@ -125,15 +125,30 @@ export const coursesAPI = {
     fetchAPI<GraphDiff>(`/courses/${id}/graph/diff?from_version=${from}&to_version=${to}`),
   confirmCurriculum: (id: string, data: unknown) =>
     fetchAPI(`/courses/${id}/curriculum/confirm`, { method: "POST", ...json(data) }),
-  optimize: (id: string) =>
-    fetchAPI<CourseOptimization>(`/courses/${id}/optimize`, { method: "POST" }),
-  getOptimization: (id: string) =>
-    fetchAPI<CourseOptimization>(`/courses/${id}/optimization`),
-  optimizeNextClass: (id: string, sessionNumber?: number) =>
-    fetchAPI<NextClassPlan>(
-      `/courses/${id}/optimize-next-class${sessionNumber ? `?session_number=${sessionNumber}` : ""}`,
+  optimize: (id: string, options?: { revision_percent?: number; assessment_percent?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.revision_percent !== undefined) params.append("revision_percent", options.revision_percent.toString());
+    if (options?.assessment_percent !== undefined) params.append("assessment_percent", options.assessment_percent.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return fetchAPI<CourseOptimization>(`/courses/${id}/optimize${query}`, { method: "POST", ...(options ? json(options) : {}) });
+  },
+  getOptimization: (id: string, options?: { revision_percent?: number; assessment_percent?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.revision_percent !== undefined) params.append("revision_percent", options.revision_percent.toString());
+    if (options?.assessment_percent !== undefined) params.append("assessment_percent", options.assessment_percent.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return fetchAPI<CourseOptimization>(`/courses/${id}/optimization${query}`);
+  },
+  optimizeNextClass: (id: string, sessionNumber?: number, customRevisionMinutes?: number) => {
+    const params = new URLSearchParams();
+    if (sessionNumber) params.append("session_number", sessionNumber.toString());
+    if (customRevisionMinutes !== undefined) params.append("custom_revision_minutes", customRevisionMinutes.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return fetchAPI<NextClassPlan>(
+      `/courses/${id}/optimize-next-class${query}`,
       { method: "POST" }
-    ),
+    );
+  },
   listLessonPlans: (id: string, sessionNumber?: number, status?: string) => {
     const params = new URLSearchParams();
     if (sessionNumber) params.append("session_number", sessionNumber.toString());

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,7 +7,7 @@ from app.database.connection import get_db
 from app.models.entities import Course, Teacher, Unit, Topic, Section, TeacherConstraint, Assessment, User, CourseMember
 from app.schemas.schemas import (
     CourseCreate, CourseUpdate, CourseOut, ConfirmCurriculumRequest, CurriculumGraphResponse,
-    CourseOptimizationResponse, NextClassOptimizationResponse,
+    OptimizeCourseRequest, CourseOptimizationResponse, NextClassOptimizationResponse,
     LessonPlanOut, LessonPlanUpdate, AssessmentCreate, AssessmentOut,
     RecordAssessmentResultsRequest, CourseAnalyticsResponse, SessionLogIn
 )
@@ -324,17 +324,44 @@ def diff_graph_versions(course_id: str, from_version: int, to_version: int, _: C
 # Optimization Endpoints
 # -------------------------------------------------------------
 @router.post("/{course_id}/optimize", response_model=CourseOptimizationResponse)
-def run_course_optimization(course_id: str, db: Session = Depends(get_db), _: Course = Depends(get_accessible_course)):
-    return time_allocator.optimize_course_time(db, course_id)
+def run_course_optimization(
+    course_id: str,
+    payload: Optional[OptimizeCourseRequest] = None,
+    revision_percent: Optional[float] = Query(None),
+    assessment_percent: Optional[float] = Query(None),
+    db: Session = Depends(get_db),
+    _: Course = Depends(get_accessible_course)
+):
+    rev_p = payload.revision_percent if (payload and payload.revision_percent is not None) else revision_percent
+    ass_p = payload.assessment_percent if (payload and payload.assessment_percent is not None) else assessment_percent
+    return time_allocator.optimize_course_time(
+        db, course_id, persist=True, revision_percent=rev_p, assessment_percent=ass_p
+    )
 
 @router.get("/{course_id}/optimization", response_model=CourseOptimizationResponse)
-def get_course_optimization(course_id: str, db: Session = Depends(get_db), _: Course = Depends(get_accessible_course)):
+def get_course_optimization(
+    course_id: str,
+    revision_percent: Optional[float] = Query(None),
+    assessment_percent: Optional[float] = Query(None),
+    db: Session = Depends(get_db),
+    _: Course = Depends(get_accessible_course)
+):
     # A GET must not change data: compute the allocation without persisting it
-    return time_allocator.optimize_course_time(db, course_id, persist=False)
+    return time_allocator.optimize_course_time(
+        db, course_id, persist=False, revision_percent=revision_percent, assessment_percent=assessment_percent
+    )
 
 @router.post("/{course_id}/optimize-next-class", response_model=NextClassOptimizationResponse)
-def optimize_next_class(course_id: str, session_number: Optional[int] = None, db: Session = Depends(get_db), _: Course = Depends(get_accessible_course)):
-    return class_optimizer.optimize_next_class(db, course_id, session_number=session_number)
+def optimize_next_class(
+    course_id: str,
+    session_number: Optional[int] = None,
+    custom_revision_minutes: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _: Course = Depends(get_accessible_course)
+):
+    return class_optimizer.optimize_next_class(
+        db, course_id, session_number=session_number, custom_revision_minutes=custom_revision_minutes
+    )
 
 # -------------------------------------------------------------
 # Lesson Plans

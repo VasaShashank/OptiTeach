@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.entities import Course, ClassSession, Topic
 from app.optimization.revision_engine import revision_engine
 from app.optimization.method_selector import method_selector
-from app.schemas.schemas import NextClassOptimizationResponse, PeriodPhase
+from app.optimization.duration_assigner import duration_assigner
+from app.schemas.schemas import NextClassOptimizationResponse
 
 class ClassOptimizer:
     """
@@ -16,7 +17,8 @@ class ClassOptimizer:
         self, 
         db: Session, 
         course_id: str, 
-        session_number: Optional[int] = None
+        session_number: Optional[int] = None,
+        custom_revision_minutes: Optional[int] = None,
     ) -> NextClassOptimizationResponse:
         course = db.query(Course).filter(Course.id == course_id).first()
         if not course:
@@ -74,101 +76,26 @@ class ClassOptimizer:
         # Method recommendations
         recommended_methods, predicted_gain = method_selector.select_methods(db, primary_type, has_weak_prereq=has_weak)
 
-        # Build exact phase breakdown totaling period_duration (e.g. 55 min)
-        phases: List[PeriodPhase] = []
-        
-        method_a = recommended_methods[0] if recommended_methods else "Lecture with diagrams"
-        method_b = recommended_methods[1] if len(recommended_methods) > 1 else "Worked examples"
-        first_concept = target_topic.concepts[0].name if target_topic.concepts else target_topic.title
+        max_lecture_ratio = course.constraints.max_lecture_ratio if course.constraints else 0.45
+        min_practice_ratio = course.constraints.min_practice_ratio if course.constraints else 0.35
 
-        if period_duration == 60:
-            if needs_revision:
-                phases = [
-                    PeriodPhase(phase_name="Revision", duration_minutes=10, method_name="Recap and revision",
-                                activity_description=f"Quick check on {rev_concept}, then clear up the usual mistakes before moving on.",
-                                concept_ref=rev_concept),
-                    PeriodPhase(phase_name="Explain", duration_minutes=20, method_name="Lecture with diagrams",
-                                activity_description=f"Introduce the key ideas and definitions of {target_topic.title}.",
-                                concept_ref=first_concept),
-                    PeriodPhase(phase_name="Worked examples", duration_minutes=20, method_name="Worked examples",
-                                activity_description="Solve two problems step by step on the board, including one edge case.",
-                                concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Class activity", duration_minutes=10, method_name="Guided practice",
-                                activity_description="Students solve a problem in pairs; finish with a quick show of hands.",
-                                concept_ref=target_topic.title),
-                ]
-            else:
-                phases = [
-                    PeriodPhase(phase_name="Recap", duration_minutes=5, method_name="Recap and revision",
-                                activity_description="Link today's topic to what the class covered last time.",
-                                concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Explain", duration_minutes=25, method_name=method_a,
-                                activity_description=f"Work through the ideas behind {target_topic.title}.",
-                                concept_ref=first_concept),
-                    PeriodPhase(phase_name="Practice", duration_minutes=20, method_name=method_b,
-                                activity_description="Model a problem, then let students try the next one.",
-                                concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Quick check", duration_minutes=10, method_name="Short quiz",
-                                activity_description="Three quick questions to see what stuck.",
-                                concept_ref=target_topic.title),
-                ]
-        elif period_duration == 55:
-            if needs_revision:
-                phases = [
-                    PeriodPhase(phase_name="Revision", duration_minutes=10, method_name="Recap and revision",
-                                activity_description=f"Quick check on {rev_concept}, then clear up the usual mistakes before moving on.",
-                                concept_ref=rev_concept),
-                    PeriodPhase(phase_name="Explain", duration_minutes=15, method_name="Lecture with diagrams",
-                                activity_description=f"Introduce the key ideas and definitions of {target_topic.title}.",
-                                concept_ref=first_concept),
-                    PeriodPhase(phase_name="Worked examples", duration_minutes=20, method_name="Worked examples",
-                                activity_description="Solve two problems step by step on the board, including one edge case.",
-                                concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Class activity", duration_minutes=10, method_name="Guided practice",
-                                activity_description="Students solve a problem in pairs; finish with a quick show of hands.",
-                                concept_ref=target_topic.title),
-                ]
-            else:
-                phases = [
-                    PeriodPhase(phase_name="Recap", duration_minutes=5, method_name="Recap and revision",
-                                activity_description="Link today's topic to what the class covered last time.",
-                                concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Explain", duration_minutes=20, method_name=method_a,
-                                activity_description=f"Work through the ideas behind {target_topic.title}.",
-                                concept_ref=first_concept),
-                    PeriodPhase(phase_name="Practice", duration_minutes=20, method_name=method_b,
-                                activity_description="Model a problem, then let students try the next one.",
-                                concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Quick check", duration_minutes=10, method_name="Short quiz",
-                                activity_description="Three quick questions to see what stuck.",
-                                concept_ref=target_topic.title),
-                ]
-        else:
-            # Proportional split for other period lengths (e.g. 50, 60 or 90 minutes)
-            if needs_revision:
-                r_m = min(15, max(10, int(period_duration * 0.18)))
-                rem = period_duration - r_m
-                c_m = int(rem * 0.35)
-                w_m = int(rem * 0.40)
-                e_m = rem - c_m - w_m
-                phases = [
-                    PeriodPhase(phase_name="Revision", duration_minutes=r_m, method_name="Recap and revision", activity_description=f"Quick check on {rev_concept}", concept_ref=rev_concept),
-                    PeriodPhase(phase_name="Explain", duration_minutes=c_m, method_name="Lecture with diagrams", activity_description="Key ideas and definitions", concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Worked examples", duration_minutes=w_m, method_name="Worked examples", activity_description="Problems solved step by step", concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Class activity", duration_minutes=e_m, method_name="Guided practice", activity_description="Students practise in pairs", concept_ref=target_topic.title),
-                ]
-            else:
-                f_m = max(5, int(period_duration * 0.10))
-                rem = period_duration - f_m
-                c_m = int(rem * 0.45)
-                w_m = int(rem * 0.30)
-                e_m = rem - c_m - w_m
-                phases = [
-                    PeriodPhase(phase_name="Recap", duration_minutes=f_m, method_name="Recap and revision", activity_description="Link to the last class", concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Explain", duration_minutes=c_m, method_name=method_a, activity_description="Key ideas and definitions", concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Practice", duration_minutes=w_m, method_name=method_b, activity_description="Model a problem, then students try one", concept_ref=target_topic.title),
-                    PeriodPhase(phase_name="Quick check", duration_minutes=e_m, method_name="Short quiz", activity_description="A few questions to see what stuck", concept_ref=target_topic.title),
-                ]
+        # Build realistic pedagogical phase breakdown based on topic difficulty, concept type, and revision needs
+        phases = duration_assigner.compute_period_phase_division(
+            period_duration=period_duration,
+            topic=target_topic,
+            needs_revision=needs_revision,
+            rev_concept=rev_concept,
+            prereq_score=rev_info.get("lowest_score"),
+            custom_revision_minutes=custom_revision_minutes,
+            max_lecture_ratio=max_lecture_ratio,
+            min_practice_ratio=min_practice_ratio,
+            recommended_methods=recommended_methods,
+        )
+
+        actual_rev_minutes = next((p.duration_minutes for p in phases if p.phase_name == "Revision"), 0)
+        if actual_rev_minutes > 0:
+            needs_revision = True
+            rev_minutes = actual_rev_minutes
 
         total_phase_minutes = sum(p.duration_minutes for p in phases)
         # Verify strict invariant

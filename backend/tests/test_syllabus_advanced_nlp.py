@@ -1,7 +1,5 @@
 import io
-import pytest
 from app.nlp.deterministic import nlp_provider
-from app.nlp.ocr import extract_text_from_image, extract_text_from_pdf
 from PIL import Image, ImageDraw
 
 RVCE_SYLLABUS_TEXT = """ Artificial Intelligence and Machine Learning 3

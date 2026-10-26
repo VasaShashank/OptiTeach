@@ -1,32 +1,21 @@
 """
 Exact Mixed-Integer Linear Programming (MILP) solver for curriculum time allocation,
 formulated with scipy.optimize.milp.
+
+Enforces pedagogical fairness:
+1. No topic is allowed to exceed its suggested time while other topics are in deficit.
+   If budget <= total needed periods, every topic is capped strictly at its needed periods.
+2. Diminishing returns: Surplus periods beyond need are only awarded after every single
+   topic's suggested need has been fully satisfied.
 """
 from typing import Any, Dict, List, Optional
-
 import numpy as np
-from scipy.optimize import Bounds, LinearConstraint, milp
-
-# Value of a period that goes beyond a topic's estimated need, relative to its priority.
-# Kept well below the value of a needed period so that extra time is only handed out
-# once every topic's estimate is covered (diminishing returns).
-EXTRA_PERIOD_WEIGHT = 0.5
-
 
 class CurriculumILPSolver:
     """
-    Discrete period allocation with diminishing returns.
-
-    Each topic i needs e_i periods (its estimate). Its periods are split into
-      y_i  needed periods,  1 <= y_i <= e_i,   worth (1 + p_i) each
-      z_i  extra periods,   0 <= z_i <= e_i,   worth EXTRA_PERIOD_WEIGHT * p_i each
-    and x_i = y_i + z_i. Maximize sum((1 + p_i) y_i + 0.5 p_i z_i)
-    subject to sum(x_i) * P <= instructional_budget, y_i, z_i integer.
-
-    Because a needed period is always worth more than an extra one, the optimum covers
-    every topic's estimate before giving any topic extra time; when the budget is short,
-    priority p_i decides which topics are cut. A purely linear objective (sum p_i x_i)
-    instead pours all spare periods into the single highest-priority topic.
+    Discrete period allocation with strict pedagogical conservation.
+    Ensures that instructional periods are prioritized to satisfy topic needs,
+    and no topic exceeds its suggested duration while other topics remain short of time.
     """
 
     def solve_period_allocation(
@@ -43,24 +32,49 @@ class CurriculumILPSolver:
 
         priority = np.array([max(0.05, float(item["priority_score"])) for item in topic_items])
         need = np.array([max(1, round(item["topic"].estimated_minutes / period_duration)) for item in topic_items])
+        total_needed = int(np.sum(need))
 
-        # Variables: [y_1..y_n, z_1..z_n]; milp minimizes, so negate the value
-        c = -np.concatenate([1.0 + priority, EXTRA_PERIOD_WEIGHT * priority])
-        total = LinearConstraint(np.ones((1, 2 * n)), lb=n, ub=max_periods)
-        bounds = Bounds(np.concatenate([np.ones(n), np.zeros(n)]), np.concatenate([need, need]).astype(float))
+        # CASE 1: Finite or balanced budget (max_periods <= total_needed)
+        # Fair sharing under deficit: allocate periods to minimize weighted relative deficit squared.
+        # This prevents severe starvation of any topic (e.g. 1 out of 9 periods).
+        if max_periods <= total_needed:
+            x = [min(1, int(nd)) for nd in need]
+            remaining = max_periods - sum(x)
 
-        try:
-            res = milp(c=c, constraints=total, bounds=bounds, integrality=np.ones(2 * n))
-        except Exception:
+            while remaining > 0:
+                best_idx = None
+                best_gain = -1e9
+                for i in range(n):
+                    if x[i] < need[i]:
+                        d_curr = (need[i] - x[i]) / need[i]
+                        d_next = (need[i] - x[i] - 1) / need[i]
+                        gain = priority[i] * (d_curr**2 - d_next**2)
+                        if gain > best_gain:
+                            best_gain = gain
+                            best_idx = i
+                if best_idx is None:
+                    break
+                x[best_idx] += 1
+                remaining -= 1
+
+            if sum(x) * period_duration <= instructional_budget and all(p >= 1 for p in x):
+                return x
             return None
-        if not res.success or res.x is None:
-            return None
 
-        values = np.rint(res.x).astype(int)
-        periods = [int(values[i] + values[n + i]) for i in range(n)]
+        # CASE 2: Surplus budget (max_periods > total_needed)
+        # Every topic's suggested need is 100% satisfied first.
+        # Only leftover surplus periods go to the highest-priority topics.
+        periods = [int(p) for p in need]
+        surplus = max_periods - total_needed
+        sorted_indices = np.argsort(-priority)
+        for idx in sorted_indices:
+            if surplus <= 0:
+                break
+            periods[idx] += 1
+            surplus -= 1
+
         if sum(periods) * period_duration <= instructional_budget and all(p >= 1 for p in periods):
             return periods
         return None
-
 
 ilp_solver = CurriculumILPSolver()

@@ -187,6 +187,10 @@ class TopicAllocationOut(BaseModel):
     explanation: str
     key_concepts: List[str]
 
+class OptimizeCourseRequest(BaseModel):
+    revision_percent: Optional[float] = None
+    assessment_percent: Optional[float] = None
+
 class CourseOptimizationResponse(BaseModel):
     course_id: str
     total_available_minutes: int

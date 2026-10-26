@@ -16,8 +16,9 @@ OptiTeach formulates curriculum time distribution as a **Mixed-Integer Linear Pr
 - $w_i \in [1, 5]$: Importance / Exam weightage of topic $i$.
 - $b_i \in \mathbb{N}$: Number of downstream prerequisite dependencies.
 - $T_{\min}$: Minimum required threshold duration ($T_{\min} = P$, i.e., at least 1 discrete period per topic).
-- $B_{\text{rev}}$: Reserved revision buffer budget ($10\%$ of $T_{\text{avail}}$, rounded to nearest period).
-- $B_{\text{asmt}}$: Reserved assessment checkpoint budget ($8\%$ of $T_{\text{avail}}$, rounded to nearest period).
+- $B_{\text{rev}}$: Teacher-controllable revision reserve (default $10\%$ of $T_{\text{avail}}$, rounded to nearest period).
+- $B_{\text{asmt}}$: Teacher-controllable assessment reserve (default $6\%$ of $T_{\text{avail}}$, rounded to nearest period).
+- $e_i$: Pedagogically estimated need in periods ($e_i = \text{estimated\_minutes}_i / P$), capped at a realistic pedagogical ceiling of $\min(e_i, 5)$ periods ($300$ minutes) to prevent single-topic syllabus agglomeration anomalies.
 
 ### Decision Variables
 - $x_i \in \mathbb{Z}^+$: Number of discrete class periods allocated to topic $i$.
@@ -27,19 +28,25 @@ OptiTeach formulates curriculum time distribution as a **Mixed-Integer Linear Pr
 
 ## 2. Mathematical Objective Function
 
-Each topic $i$ has a priority $p_i$ (the weighted score above) and an estimated need of
-$e_i = \max(1, \text{round}(\text{estimated\_minutes}_i / P))$ periods. Its periods are split into
-*needed* periods $y_i$ and *extra* periods $z_i$, with $x_i = y_i + z_i$:
+### Case 1: Deficit Budget ($\sum_{i=1}^N e_i > M_{\text{instr}}$)
+When the total pedagogical demand exceeds available instructional periods $M_{\text{instr}} = (T_{\text{avail}} - B_{\text{rev}} - B_{\text{asmt}}) / P$, pure linear knapsack models cause **catastrophic starvation** (filling early topics to 100% while starving complex multi-concept topics to 1 period, e.g. 60 out of 540 min).
 
-$$\max \sum_{i=1}^{N} (1 + p_i)\, y_i + 0.5\, p_i\, z_i$$
+OptiTeach solves this via **Proportional Fairness / Diminishing-Returns Deficit Minimization**:
 
-$$1 \le y_i \le e_i, \qquad 0 \le z_i \le e_i, \qquad y_i, z_i \in \mathbb{Z}$$
+$$\min \sum_{i=1}^N p_i \left( \frac{e_i - x_i}{e_i} \right)^2$$
 
-A needed period is always worth more than an extra one ($1 + p_i > 0.5\,p_j$), so the optimum
-covers every topic's estimate before any topic gets extra time (diminishing returns). When the
-budget is short, priority decides which topics are cut back towards their one-period floor.
-A purely linear objective $\sum p_i x_i$ has corner-point optima that pour every spare period
-into the single highest-priority topic, which is why the two tiers are used.
+subject to:
+$$\sum_{i=1}^N x_i \le M_{\text{instr}}$$
+$$1 \le x_i \le e_i \quad \forall i \in \{1, \dots, N\}$$
+
+By minimizing the weighted squared relative deficit:
+- **No Topic Exceeds Need**: $x_i \le e_i$, strictly preventing surplus allocation to satisfied topics while others remain in deficit.
+- **Fair Equitable Compression**: Topics share the deficit proportionally (e.g. 75% to 85% satisfaction across all topics) based on pedagogical weights $p_i$, eliminating single-topic starvation.
+
+### Case 2: Surplus Budget ($\sum_{i=1}^N e_i < M_{\text{instr}}$)
+When instructional periods exceed total syllabus demand:
+1. Every topic receives $100\%$ of its suggested need: $x_i \ge e_i$.
+2. Leftover surplus periods $S = M_{\text{instr}} - \sum e_i$ are distributed one-by-one to the highest-priority topics ($p_i$) for enrichment and advanced problem solving.
 
 ---
 
