@@ -186,7 +186,6 @@ class LessonPlanService:
         doc = mongo_db["lesson_plan_documents"].find_one({"_id": lp.mongo_doc_id})
         if not doc:
             topic_title = lp.topic.title if lp.topic else "Database Systems"
-            duration = lp.session.duration_minutes if lp.session else 60
             phases_data = [
                 {"phase_name": "Recap & Prior Knowledge Hook", "duration_minutes": 5, "method_name": "Direct Instruction (Lecture)", "activity_description": f"Review prior concepts and introduce motivational challenge for {topic_title}."},
                 {"phase_name": "Core Concept Exposition", "duration_minutes": 25, "method_name": "Direct Instruction (Lecture)", "activity_description": f"Interactive lecture detailing formal definitions, schema rules, and algorithms for {topic_title}."},
@@ -207,7 +206,7 @@ class LessonPlanService:
                 ],
                 "worked_examples": [
                     f"Example 1: Step-by-step canonical resolution of {topic_title}.",
-                    f"Example 2: Analyzing performance trade-offs in concurrent transaction workloads."
+                    "Example 2: Analyzing performance trade-offs in concurrent transaction workloads."
                 ],
                 "active_exercises": [
                     f"In-class challenge: Construct optimal execution strategy for {topic_title}.",
@@ -219,7 +218,7 @@ class LessonPlanService:
                 ],
                 "assessment_questions": [
                     f"State the primary definition and necessary conditions for {topic_title}.",
-                    f"Given relation R(A, B, C, D) with FDs, determine the highest normal form and justify."
+                    "Given relation R(A, B, C, D) with FDs, determine the highest normal form and justify."
                 ],
                 "resources": [],
                 "generated_at": datetime.now(timezone.utc).isoformat()
