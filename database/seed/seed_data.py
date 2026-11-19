@@ -344,12 +344,17 @@ def seed_database():
         # 7. Class Sessions (45 periods)
         # Sessions 1-14 Completed
         topics_sequence = [t1, t1, t2, t2, t2, t2, t3, t3, t3, t4, t4, t4, t5, t6]
+        base_date = datetime.datetime(2026, 8, 17, 10, 0, 0)
+        curr_dt = base_date
         for s_idx, top in enumerate(topics_sequence, start=1):
+            while curr_dt.weekday() not in (0, 2, 4):
+                curr_dt += datetime.timedelta(days=1)
             sess = ClassSession(
                 course_id=course.id,
                 session_number=s_idx,
                 duration_minutes=pd,
                 current_topic_id=top.id,
+                scheduled_date=curr_dt,
                 status="completed"
             )
             db.add(sess)
@@ -362,33 +367,42 @@ def seed_database():
                 actual_minutes=pd,
                 teacher_notes=f"Completed standard syllabus coverage of {top.title}. Cohort participation was high.",
                 student_engagement_rating=4,
-                conducted_at=datetime.datetime(2026, 8, 15) + datetime.timedelta(days=s_idx * 2)
+                conducted_at=curr_dt
             )
             db.add(ts)
+            curr_dt += datetime.timedelta(days=1)
 
         # Session 15: FLAGSHIP NEXT CLASS (Relational Normalization)
+        while curr_dt.weekday() not in (0, 2, 4):
+            curr_dt += datetime.timedelta(days=1)
         s15 = ClassSession(
             course_id=course.id,
             session_number=15,
             duration_minutes=pd,
             current_topic_id=t7.id, # Relational Normalization
+            scheduled_date=curr_dt,
             status="scheduled"
         )
         db.add(s15)
         db.flush()
+        curr_dt += datetime.timedelta(days=1)
 
         # Remaining Sessions 16-45
         all_remaining_topics = [t7, t7, t7, t7, t5, t5, t5, t5, t8, t8, t8, t8, t9, t9, t9, t9, t10, t10, t10, t10, t11, t11, t11, t11, t11]
         for s_idx in range(16, 46):
+            while curr_dt.weekday() not in (0, 2, 4):
+                curr_dt += datetime.timedelta(days=1)
             rem_top = all_remaining_topics[(s_idx - 16) % len(all_remaining_topics)]
             sess = ClassSession(
                 course_id=course.id,
                 session_number=s_idx,
                 duration_minutes=pd,
                 current_topic_id=rem_top.id,
+                scheduled_date=curr_dt,
                 status="scheduled"
             )
             db.add(sess)
+            curr_dt += datetime.timedelta(days=1)
 
         db.commit()
 
