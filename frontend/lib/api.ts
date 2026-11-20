@@ -125,17 +125,19 @@ export const coursesAPI = {
     fetchAPI<GraphDiff>(`/courses/${id}/graph/diff?from_version=${from}&to_version=${to}`),
   confirmCurriculum: (id: string, data: unknown) =>
     fetchAPI(`/courses/${id}/curriculum/confirm`, { method: "POST", ...json(data) }),
-  optimize: (id: string, options?: { revision_percent?: number; assessment_percent?: number }) => {
+  optimize: (id: string, options?: { revision_percent?: number; assessment_percent?: number; buffer_percent?: number }) => {
     const params = new URLSearchParams();
     if (options?.revision_percent !== undefined) params.append("revision_percent", options.revision_percent.toString());
     if (options?.assessment_percent !== undefined) params.append("assessment_percent", options.assessment_percent.toString());
+    if (options?.buffer_percent !== undefined) params.append("buffer_percent", options.buffer_percent.toString());
     const query = params.toString() ? `?${params.toString()}` : "";
     return fetchAPI<CourseOptimization>(`/courses/${id}/optimize${query}`, { method: "POST", ...(options ? json(options) : {}) });
   },
-  getOptimization: (id: string, options?: { revision_percent?: number; assessment_percent?: number }) => {
+  getOptimization: (id: string, options?: { revision_percent?: number; assessment_percent?: number; buffer_percent?: number }) => {
     const params = new URLSearchParams();
     if (options?.revision_percent !== undefined) params.append("revision_percent", options.revision_percent.toString());
     if (options?.assessment_percent !== undefined) params.append("assessment_percent", options.assessment_percent.toString());
+    if (options?.buffer_percent !== undefined) params.append("buffer_percent", options.buffer_percent.toString());
     const query = params.toString() ? `?${params.toString()}` : "";
     return fetchAPI<CourseOptimization>(`/courses/${id}/optimization${query}`);
   },

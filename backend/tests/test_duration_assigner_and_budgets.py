@@ -130,10 +130,43 @@ def test_controllable_time_allocator_percentages():
         assessment_percent=12.0
     )
 
-    # 2700 * 0.15 = 405 -> discrete 60m periods = 360m (6 periods)
+    # 10% default buffer on 2700 = 300m buffer. Net instructional time = 2400m.
+    # 2400 * 0.15 = 360 -> discrete 60m periods = 360m (6 periods)
     assert resp.revision_budget_minutes == 360
-    # 2700 * 0.12 = 324 -> discrete 60m periods = 300m (5 periods)
+    # 2400 * 0.12 = 288 -> discrete 60m periods = 300m (5 periods)
     assert resp.assessment_budget_minutes == 300
+    assert resp.formula_explanation["buffer_percent"] == 10.0
     assert resp.formula_explanation["revision_percent"] == 15.0
     assert resp.formula_explanation["assessment_percent"] == 12.0
     assert resp.formula_explanation["teacher_controllable"] is True
+
+
+def test_teacher_adjustable_buffer_deduction():
+    db = MagicMock()
+    course = MagicMock()
+    course.id = "c-102"
+    course.total_classes = 45
+    course.period_duration = 60
+    course.total_available_minutes = 2700
+    db.query.return_value.filter.return_value.first.return_value = course
+
+    # Standard percentages: 10% rev, 8% tests, 10% buffer
+    resp = time_allocator.optimize_course_time(
+        db,
+        course_id="c-102",
+        persist=False,
+        revision_percent=10.0,
+        assessment_percent=8.0,
+        buffer_percent=10.0
+    )
+
+    # 2700 * 0.10 = 270 -> 300m buffer (5 periods)
+    # Net teaching time = 2700 - 300 = 2400m (40 periods)
+    # Revision = 2400 * 0.10 = 240m (4 periods)
+    assert resp.revision_budget_minutes == 240
+    # Assessment = 2400 * 0.08 = 192m -> 180m (3 periods)
+    assert resp.assessment_budget_minutes == 180
+    assert resp.unallocated_buffer_minutes >= 300
+    assert resp.formula_explanation["buffer_percent"] == 10.0
+    assert resp.formula_explanation["revision_percent"] == 10.0
+    assert resp.formula_explanation["assessment_percent"] == 8.0

@@ -329,13 +329,15 @@ def run_course_optimization(
     payload: Optional[OptimizeCourseRequest] = None,
     revision_percent: Optional[float] = Query(None),
     assessment_percent: Optional[float] = Query(None),
+    buffer_percent: Optional[float] = Query(None),
     db: Session = Depends(get_db),
     _: Course = Depends(get_accessible_course)
 ):
     rev_p = payload.revision_percent if (payload and payload.revision_percent is not None) else revision_percent
     ass_p = payload.assessment_percent if (payload and payload.assessment_percent is not None) else assessment_percent
+    buf_p = payload.buffer_percent if (payload and payload.buffer_percent is not None) else buffer_percent
     return time_allocator.optimize_course_time(
-        db, course_id, persist=True, revision_percent=rev_p, assessment_percent=ass_p
+        db, course_id, persist=True, revision_percent=rev_p, assessment_percent=ass_p, buffer_percent=buf_p
     )
 
 @router.get("/{course_id}/optimization", response_model=CourseOptimizationResponse)
@@ -343,12 +345,13 @@ def get_course_optimization(
     course_id: str,
     revision_percent: Optional[float] = Query(None),
     assessment_percent: Optional[float] = Query(None),
+    buffer_percent: Optional[float] = Query(None),
     db: Session = Depends(get_db),
     _: Course = Depends(get_accessible_course)
 ):
     # A GET must not change data: compute the allocation without persisting it
     return time_allocator.optimize_course_time(
-        db, course_id, persist=False, revision_percent=revision_percent, assessment_percent=assessment_percent
+        db, course_id, persist=False, revision_percent=revision_percent, assessment_percent=assessment_percent, buffer_percent=buffer_percent
     )
 
 @router.post("/{course_id}/optimize-next-class", response_model=NextClassOptimizationResponse)

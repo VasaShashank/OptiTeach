@@ -190,6 +190,7 @@ class TopicAllocationOut(BaseModel):
 class OptimizeCourseRequest(BaseModel):
     revision_percent: Optional[float] = None
     assessment_percent: Optional[float] = None
+    buffer_percent: Optional[float] = None
 
 class CourseOptimizationResponse(BaseModel):
     course_id: str

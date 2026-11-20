@@ -20,6 +20,7 @@ class TimeAllocator:
         persist: bool = True,
         revision_percent: Optional[float] = None,
         assessment_percent: Optional[float] = None,
+        buffer_percent: Optional[float] = None,
     ) -> CourseOptimizationResponse:
         """
         persist=True writes the new allocation. The course row is locked FOR UPDATE first,
@@ -36,25 +37,36 @@ class TimeAllocator:
         total_avail_min = course.total_available_minutes
         period_duration = course.period_duration
 
-        # Teacher-controllable reservation for revision and assessment checkpoints
-        # Default: 10% revision buffer, 8% formal assessments (e.g., midterms/quizzes)
+        # Teacher-controllable reservation for buffer (public holidays / contingency),
+        # revision, and assessment checkpoints.
+        # Deduct buffer first (public holidays, breaks, unforeseen closures),
+        # then compute revision and assessment on the remaining net instructional time.
+        buf_pct = buffer_percent if buffer_percent is not None else 10.0
         rev_pct = revision_percent if revision_percent is not None else 10.0
         ass_pct = assessment_percent if assessment_percent is not None else 8.0
+        if buf_pct > 1.0:
+            buf_pct = buf_pct / 100.0
         if rev_pct > 1.0:
             rev_pct = rev_pct / 100.0
         if ass_pct > 1.0:
             ass_pct = ass_pct / 100.0
+        buf_pct = max(0.0, min(0.40, buf_pct))
         rev_pct = max(0.0, min(0.35, rev_pct))
         ass_pct = max(0.0, min(0.30, ass_pct))
 
-        revision_budget = int(total_avail_min * rev_pct)
-        assessment_budget = int(total_avail_min * ass_pct)
-        
-        # Round revision and assessment budgets to discrete periods
-        revision_budget = (revision_budget // period_duration) * period_duration
-        assessment_budget = (assessment_budget // period_duration) * period_duration
-        
-        instructional_budget = total_avail_min - revision_budget - assessment_budget
+        def snap_periods(minutes: float, pd: int) -> int:
+            import math
+            return int(math.floor((minutes / pd) + 0.5)) * pd
+
+        # 1. Deduct buffer time first (public holidays / contingency)
+        buffer_budget = snap_periods(total_avail_min * buf_pct, period_duration)
+        net_instructional_min = max(0, total_avail_min - buffer_budget)
+
+        # 2. Compute revision and assessment on net instructional time (after deleting buffer time)
+        revision_budget = snap_periods(net_instructional_min * rev_pct, period_duration)
+        assessment_budget = snap_periods(net_instructional_min * ass_pct, period_duration)
+
+        instructional_budget = max(0, net_instructional_min - revision_budget - assessment_budget)
 
         # Calculate topic priority scores
         topic_scores = scoring_engine.calculate_topic_scores(db, course_id)
@@ -69,8 +81,10 @@ class TimeAllocator:
                 time_pressure_status="healthy",
                 topic_allocations=[],
                 formula_explanation={
+                    "buffer_percent": round(buf_pct * 100, 1),
                     "revision_percent": round(rev_pct * 100, 1),
                     "assessment_percent": round(ass_pct * 100, 1),
+                    "net_instructional_minutes": net_instructional_min,
                     "teacher_controllable": True,
                 }
             )
@@ -218,10 +232,12 @@ class TimeAllocator:
             formula_explanation={
                 "model": solver_used,
                 "weights": scoring_engine.weights,
-                "invariant": f"Allocated ({allocated_sum}m) + Revision ({revision_budget}m) + Assessment ({assessment_budget}m) <= Total ({total_avail_min}m)",
+                "invariant": f"Allocated ({allocated_sum}m) + Revision ({revision_budget}m) + Assessment ({assessment_budget}m) + Buffer ({max(0, unallocated_buffer)}m) == Total ({total_avail_min}m)",
                 "period_duration_minutes": period_duration,
+                "buffer_percent": round(buf_pct * 100, 1),
                 "revision_percent": round(rev_pct * 100, 1),
                 "assessment_percent": round(ass_pct * 100, 1),
+                "net_instructional_minutes": net_instructional_min,
                 "teacher_controllable": True,
                 "duration_assignment_factors": [
                     "concept_difficulty",
