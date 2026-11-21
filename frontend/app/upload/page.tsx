@@ -49,7 +49,7 @@ export default function UploadPage() {
   // Editable course parameters
   const [courseTitle, setCourseTitle] = useState("");
   const [courseCode, setCourseCode] = useState("");
-  const [semester, setSemester] = useState("Fall 2026");
+  const [semester, setSemester] = useState("5th Sem");
   const [totalClasses, setTotalClasses] = useState(45);
   const [periodDuration, setPeriodDuration] = useState(60);
 
@@ -124,10 +124,10 @@ export default function UploadPage() {
         const newCourse = await coursesAPI.create({
           code: courseCode.trim() || curriculum.course_code,
           title: courseTitle.trim() || curriculum.course_name,
-          semester: semester.trim() || "Fall 2026",
+          semester: semester.trim() || "5th Sem",
           total_classes: totalClasses,
           period_duration: periodDuration,
-          academic_year: "2026-2027",
+          academic_year: "2024-2025",
           section_name: "Section A",
         });
         activeCourseId = newCourse.id;
@@ -515,7 +515,7 @@ Normal forms: 1NF, 2NF, 3NF, BCNF`}
                 </label>
                 <label className="field">
                   Semester
-                  <input className="input" value={semester} onChange={(e) => setSemester(e.target.value)} placeholder="Fall 2026" />
+                  <input className="input" value={semester} onChange={(e) => setSemester(e.target.value)} placeholder="5th Sem (e.g. 3rd Sem, 5th Sem, 7th Sem)" />
                 </label>
                 <label className="field" style={{ gridColumn: "span 2" }}>
                   Periods in the semester

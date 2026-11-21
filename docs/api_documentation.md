@@ -80,7 +80,44 @@ request/response schemas is served at `http://localhost:8000/docs`.
 |---|---|---|
 | `GET` | `/api/exports/courses/{course_id}/calendar.ics` | Export course schedule as iCalendar (.ics) format |
 | `GET` | `/api/exports/courses/{course_id}/outcomes-matrix` | Export NBA/ABET Course Outcome Attainment Matrix |
+| `GET` | `/api/exports/courses/{course_id}/nba-course-file` | **1-Click NBA / Autonomous Course File (SAR)**: Printable audit dossier (HTML/PDF) |
 | `GET` | `/api/exports/lesson-plans/{session_id}/printable` | Export formatted printable HTML lesson plan (saveable as PDF) |
+
+## Institutional Operations & Regulatory Compliance (RVCE / VTU)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/courses/{course_id}/lost-class` | Report a lost class (fest/holiday/leave) with Saturday zero-hour compensation or dynamic MILP rebalancing |
+| `GET` | `/api/courses/{course_id}/lost-classes` | View history of reported lost classes and scheduled Saturday compensatory sessions |
+| `POST` | `/api/courses/{course_id}/assign-proxy` | Assign a substitute faculty for On-Duty (OD) periods (valuation, conference, leave) |
+| `GET` | `/api/courses/{course_id}/proxy-handover/{session_id}` | Generate the **1-Click Proxy Handover Kit** with delivery phases, whiteboard problems, and exit checks |
+| `GET` | `/api/courses/{course_id}/lab-sync` | Check Theory vs. Lab Batch Synchronization for Batches A1 & A2 with precedence guard alerts |
+| `GET` | `/api/courses/{course_id}/differentiated-learners` | **AICTE Criterion 2.2**: Classify Slow Learners (<40%) with remedial tutorials vs. Advanced Learners (>80%) |
+| `POST` | `/api/courses/{course_id}/topics/{topic_id}/record-progress` | Log topic completion with actual periods spent and detect syllabus pace drift |
+| `GET` | `/api/courses/{course_id}/syllabus-drift` | Real-time syllabus pace drift analysis: lagging, on-schedule, or ahead |
+| `GET` | `/api/courses/{course_id}/attendance-analysis` | **VTU Clauses 8.1 & 8.2**: Evaluate Safe Zone (>=85%), Condonation Zone (75-84.9%), and detention risk |
+
+## Admin & Department Governance
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/admin/overview` | Department overview: total courses, teachers, enrolled students, at-risk count |
+| `GET` | `/api/admin/mappings` | List all course-to-teacher mappings with semester filtering |
+| `PUT` | `/api/admin/mappings/{course_id}` | Re-assign faculty or change section for a course |
+| `GET` | `/api/admin/teachers` | Department faculty roster with course workloads and pending assignments |
+| `POST` | `/api/admin/teachers` | Admin manually provisions a new department teacher |
+| `POST` | `/api/admin/courses` | Admin provisions a course and maps it to a teacher and section |
+| `GET` | `/api/admin/students` | Filter students by semester, section, and course with CIE marks |
+| `POST` | `/api/admin/students` | Admin creates a student manually with automatic semester course enrollment |
+| `POST` | `/api/admin/simulate-rvce-data` | Seed realistic RVCE student cohort (60 students per section) with CIE marks |
+
+## Course Students & Continuous Evaluation
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/courses/{course_id}/students` | Roster of enrolled students in a course with attendance and individual CIE test scores |
+| `POST` | `/api/courses/{course_id}/students/record-result` | Faculty records/updates test marks (CIE-I, CIE-II, Quizzes) with feedback |
+| `GET` | `/api/courses/{course_id}/attainment` | NBA Outcome-Based Education (OBE) Course Outcome attainment vs 60% benchmark |
 
 ## Teaching Methods
 

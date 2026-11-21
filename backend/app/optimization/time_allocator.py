@@ -89,10 +89,11 @@ class TimeAllocator:
                 }
             )
 
-        # Apply realistic duration assigner if topic estimated_minutes are flat defaults or <= 0
+        # Dynamically compute topic estimated_minutes (raw pedagogical demand)
+        # incorporating concept type, Bloom cognitive depth, difficulty, and student cohort CIE test deficits
         for item in topic_scores:
             t_obj: Topic = item["topic"]
-            if t_obj.concepts and (t_obj.estimated_minutes == 120 or t_obj.estimated_minutes <= 0):
+            if t_obj.concepts:
                 unit_topics = t_obj.unit.topics if t_obj.unit else None
                 unit_hrs = getattr(t_obj.unit, "hours", None) if t_obj.unit else None
                 t_obj.estimated_minutes = duration_assigner.calculate_topic_estimated_minutes(

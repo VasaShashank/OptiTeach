@@ -49,7 +49,7 @@ export default function TimePlanPage() {
           syncPercentsFromPlan(p);
         });
       }
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { }).finally(() => setLoading(false));
   }, []);
 
   const changeCourse = async (courseId: string) => {
@@ -66,18 +66,18 @@ export default function TimePlanPage() {
     }
   };
 
-  const rebuild = async (revP?: number, assP?: number, bufP?: number) => {
+  const rebuild = async (bufP?: number, revP?: number, assP?: number) => {
     if (!selectedCourse) return;
     setRebuilding(true);
     setError(null);
     try {
+      const bP = bufP !== undefined ? bufP : bufferPercent;
       const rP = revP !== undefined ? revP : revisionPercent;
       const aP = assP !== undefined ? assP : assessmentPercent;
-      const bP = bufP !== undefined ? bufP : bufferPercent;
       const updatedPlan = await coursesAPI.optimize(selectedCourse, {
-        revision_percent: rP,
-        assessment_percent: aP,
         buffer_percent: bP,
+        revision_percent: rP,
+        assessment_percent: aP
       });
       setPlan(updatedPlan);
       syncPercentsFromPlan(updatedPlan);
@@ -92,7 +92,7 @@ export default function TimePlanPage() {
     setBufferPercent(10);
     setRevisionPercent(10);
     setAssessmentPercent(8);
-    rebuild(10, 8, 10);
+    rebuild(10, 10, 8);
   };
 
   const previewNextClass = async (overrideRevMinutes?: number) => {
@@ -118,13 +118,16 @@ export default function TimePlanPage() {
   const totalMins = plan?.total_available_minutes || (course ? course.total_classes * course.period_duration : 0);
   const pd = course?.period_duration || 60;
 
-  // 1. Buffer space for public holidays, semester breaks, and contingency is deducted first
-  const estimatedBufMinutes = Math.round((totalMins * (bufferPercent / 100)) / pd) * pd;
-  const netTeachingMinutes = Math.max(0, totalMins - estimatedBufMinutes);
+  // Snapping helper matching backend TimeAllocator.snap_periods
+  const snapPeriods = (minutes: number, pDur: number) => Math.round(minutes / pDur) * pDur;
 
-  // 2. Revision & Assessment are calculated on net instructional time (after deducting buffer)
-  const estimatedRevMinutes = Math.round((netTeachingMinutes * (revisionPercent / 100)) / pd) * pd;
-  const estimatedAssMinutes = Math.round((netTeachingMinutes * (assessmentPercent / 100)) / pd) * pd;
+  // 1. Buffer space: calculated on total available semester minutes
+  const estimatedBufMinutes = snapPeriods(totalMins * (bufferPercent / 100), pd);
+  const netInstructionalMinutes = Math.max(0, totalMins - estimatedBufMinutes);
+
+  // 2. Revision & Assessments: calculated on net instructional time (matching backend TimeAllocator exactly)
+  const estimatedRevMinutes = snapPeriods(netInstructionalMinutes * (revisionPercent / 100), pd);
+  const estimatedAssMinutes = snapPeriods(netInstructionalMinutes * (assessmentPercent / 100), pd);
 
   return (
     <div className="animate-fade-in">
@@ -186,17 +189,17 @@ export default function TimePlanPage() {
                 className="btn btn-ghost"
                 style={{ fontSize: "0.85rem", padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                <RotateCcw size={14} /> Reset to Standard (10% Rev / 8% Tests / 10% Buffer)
+                <RotateCcw size={14} /> Reset to Standard (10% Buffer / 10% Rev / 8% Tests)
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-              {/* Buffer / Public Holidays Percentage Slider */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
+              {/* Buffer Space Slider */}
               <div style={{ padding: "12px 16px", borderRadius: "var(--radius-sm)", background: "var(--surface-sunk)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label htmlFor="buffer-range" style={{ fontWeight: 600, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--rule-strong)" }} />
-                    Holidays & Buffer Reserve
+                    Buffer Space (Contingency)
                   </label>
                   <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--pencil-strong)" }}>
                     {bufferPercent}% ({estimatedBufMinutes} min / {Math.round(estimatedBufMinutes / pd)} periods)
@@ -213,7 +216,7 @@ export default function TimePlanPage() {
                   style={{ width: "100%", accentColor: "var(--rule-strong)", cursor: "pointer" }}
                 />
                 <p style={{ margin: "6px 0 0", fontSize: "0.82rem", color: "var(--pencil)" }}>
-                  Sets aside protected periods for public holidays, semester breaks, and unexpected campus closures.
+                  Sets aside unallocated buffer periods for holidays, sports/fests, and unforeseen disruptions.
                 </p>
               </div>
 
@@ -239,7 +242,7 @@ export default function TimePlanPage() {
                   style={{ width: "100%", accentColor: "var(--highlighter)", cursor: "pointer" }}
                 />
                 <p style={{ margin: "6px 0 0", fontSize: "0.82rem", color: "var(--pencil)" }}>
-                  Remediates weak prerequisites and concepts (calculated on net teaching time after deducting buffer).
+                  Sets aside dynamic remediation periods for remediating weak prerequisites before topics begin.
                 </p>
               </div>
 
@@ -248,7 +251,7 @@ export default function TimePlanPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <label htmlFor="assessment-range" style={{ fontWeight: 600, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--caution)" }} />
-                    Assessments & Exams
+                    Assessments &amp; Exams
                   </label>
                   <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--caution)" }}>
                     {assessmentPercent}% ({estimatedAssMinutes} min / {Math.round(estimatedAssMinutes / pd)} periods)
@@ -301,7 +304,7 @@ export default function TimePlanPage() {
                     <th scope="col">Unit</th>
                     <th scope="col">Topic</th>
                     <th scope="col" style={{ textAlign: "right" }}>Periods</th>
-                    <th scope="col" style={{ textAlign: "right" }}>Minutes</th>
+                    <th scope="col" style={{ textAlign: "right" }}>Allocation vs Need</th>
                     <th scope="col">Pedagogical Rationale & Weights</th>
                   </tr>
                 </thead>
@@ -356,7 +359,7 @@ export default function TimePlanPage() {
                 Each topic is evaluated using a pedagogical scoring engine integrating conceptual difficulty (1-5), Bloom taxonomy cognitive demand (Remember to Create), prerequisite bottleneck depth, assessment relevance, and recent class performance scores.
               </p>
               <p>
-                Buffer periods for public holidays, breaks, and contingencies ({bufferPercent}%) are deducted first from total semester time. Teacher-configured revision budget ({revisionPercent}%) and assessment budget ({assessmentPercent}%) are then calculated on the remaining net instructional time and preserved into discrete periods. The mixed-integer linear programming (MILP) solver then guarantees exact period integrality while distributing instructional minutes according to diminishing returns.
+                Teacher-configured revision budget ({revisionPercent}%) and assessment budget ({assessmentPercent}%) are preserved first into discrete periods. The mixed-integer linear programming (MILP) solver then guarantees exact period integrality while distributing instructional minutes according to diminishing returns.
               </p>
               {plan.formula_explanation?.model && <p><strong>Optimization solver:</strong> {String(plan.formula_explanation.model)}</p>}
               {plan.formula_explanation?.invariant && (
@@ -376,15 +379,15 @@ function Budget({ plan, course }: { plan: CourseOptimization; course?: Course })
     { label: "Teaching topics", minutes: plan.total_allocated_minutes, color: "var(--ink)" },
     { label: "Revision", minutes: plan.revision_budget_minutes, color: "var(--highlighter)" },
     { label: "Tests & Checkpoints", minutes: plan.assessment_budget_minutes, color: "var(--caution)" },
-    { label: "Holiday & Buffer Reserve", minutes: plan.unallocated_buffer_minutes, color: "var(--rule-strong)" },
+    { label: "Buffer Spare", minutes: plan.unallocated_buffer_minutes, color: "var(--rule-strong)" },
   ];
   const used = plan.total_allocated_minutes + plan.revision_budget_minutes + plan.assessment_budget_minutes;
   const status =
     plan.time_pressure_status === "high_pressure"
-      ? { text: `Over by ${fmt(used - total)} minutes. Reduce buffer/revision/tests, shorten topics, or add periods to course.`, color: "var(--redpen)" }
+      ? { text: `Over by ${fmt(used - total)} minutes. Reduce revision/tests, shorten topics, or add periods to course.`, color: "var(--redpen)" }
       : plan.time_pressure_status === "balanced"
-        ? { text: `Tightly fitted: ${fmt(plan.unallocated_buffer_minutes)} minutes holiday & buffer reserve.`, color: "var(--caution)" }
-        : { text: `Feasible schedule with ${fmt(plan.unallocated_buffer_minutes)} minutes holiday & buffer reserve.`, color: "var(--tick)" };
+        ? { text: `Tightly fitted: ${fmt(plan.unallocated_buffer_minutes)} minutes unallocated buffer.`, color: "var(--caution)" }
+        : { text: `Feasible schedule with ${fmt(plan.unallocated_buffer_minutes)} minutes available buffer.`, color: "var(--tick)" };
 
   return (
     <section className="card" style={{ padding: 20, marginBottom: 24 }}>

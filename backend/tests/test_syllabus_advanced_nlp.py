@@ -2,7 +2,7 @@ import io
 from app.nlp.deterministic import nlp_provider
 from PIL import Image, ImageDraw
 
-RVCE_SYLLABUS_TEXT = """ Artificial Intelligence and Machine Learning 3
+SAMPLE_SYLLABUS_TEXT = """ Artificial Intelligence and Machine Learning 3
 Semester: V
 DATABASE MANAGEMENT SYSTEMS
 Category: Professional Core Course
@@ -61,7 +61,7 @@ Persistence, Addison-Wesley, 2012, ISBN 978-0-321-82662-6,
 """
 
 def test_deduce_all_academic_parameters():
-    result = nlp_provider.extract_from_text(RVCE_SYLLABUS_TEXT)
+    result = nlp_provider.extract_from_text(SAMPLE_SYLLABUS_TEXT)
     assert result.course_name == "DATABASE MANAGEMENT SYSTEMS"
     assert result.course_code == "CD252IA"
     assert "5" in result.semester or "V" in result.semester
@@ -75,7 +75,7 @@ def test_deduce_all_academic_parameters():
     assert "3.00" in result.see_duration
 
 def test_unit_hours_and_topics():
-    result = nlp_provider.extract_from_text(RVCE_SYLLABUS_TEXT)
+    result = nlp_provider.extract_from_text(SAMPLE_SYLLABUS_TEXT)
     assert len(result.units) == 5
     for unit in result.units:
         assert unit.hours == 9
@@ -84,7 +84,7 @@ def test_unit_hours_and_topics():
             assert len(topic.concepts) >= 1
 
 def test_bloom_taxonomy_cognitive_alignment():
-    result = nlp_provider.extract_from_text(RVCE_SYLLABUS_TEXT)
+    result = nlp_provider.extract_from_text(SAMPLE_SYLLABUS_TEXT)
     assert len(result.outcomes) == 5
     co_map = {co.code: co.bloom_level for co in result.outcomes}
     assert co_map["CO1"] == "Understand"
@@ -94,7 +94,7 @@ def test_bloom_taxonomy_cognitive_alignment():
     assert co_map["CO5"] == "Apply"
 
 def test_reference_books_extraction():
-    result = nlp_provider.extract_from_text(RVCE_SYLLABUS_TEXT)
+    result = nlp_provider.extract_from_text(SAMPLE_SYLLABUS_TEXT)
     assert len(result.reference_books) == 4
     assert any("Elmasri" in b for b in result.reference_books)
     assert any("Pramod" in b for b in result.reference_books)

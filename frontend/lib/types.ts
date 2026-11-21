@@ -516,3 +516,179 @@ export interface CourseMembers {
   owner: { teacher_id: string; name: string; email: string };
   members: { teacher_id: string; name: string; email: string; role: MemberRole; added_at: string }[];
 }
+
+// ── Autonomous & Student Administration ──
+export interface AdminOverview {
+  institution_name: string;
+  department_name: string;
+  total_teachers: number;
+  total_courses: number;
+  total_sections: number;
+  total_students: number;
+  average_attendance: number;
+  at_risk_students_count: number;
+  attainment_rate_percentage: number;
+}
+
+export interface CourseMapping {
+  course_id: string;
+  code: string;
+  title: string;
+  semester: string;
+  section_name: string;
+  teacher_id: string;
+  teacher_name: string;
+  teacher_email: string;
+  student_count: number;
+  units_count: number;
+  total_classes: number;
+}
+
+export interface StudentItem {
+  id: string;
+  usn: string;
+  full_name: string;
+  email: string;
+  department: string;
+  semester: number;
+  section: string;
+  batch_year: string;
+  attendance_percentage: number;
+  cie_total: number;
+  status: string;
+  is_at_risk: boolean;
+  test_scores: Record<string, number>;
+}
+
+export interface AttainmentOutcome {
+  code: string;
+  description: string;
+  bloom_level: string;
+  threshold_percentage: number;
+  attained_percentage: number;
+  status: string;
+}
+
+export interface AttainmentReport {
+  course_id: string;
+  course_code: string;
+  course_title: string;
+  total_enrolled: number;
+  overall_average_percentage: number;
+  outcomes: AttainmentOutcome[];
+  bloom_mastery: Record<string, { target: number; achieved: number; status: string }>;
+  institution: string;
+}
+
+export interface TodayClass {
+  course_id: string;
+  course_code: string;
+  course_title: string;
+  semester: string;
+  section: string;
+  room: string;
+  timeslot: string;
+  period_number?: number;
+  class_type?: string;
+  session_number: number;
+  topic_name: string;
+  concept_name: string;
+  bloom_level: string;
+  lesson_plan_status: string;
+  has_remedial_alert: boolean;
+  student_count: number;
+}
+
+export interface TimetableSlot {
+  day: string;
+  period_number: number;
+  period_slot: string;
+  course_id: string;
+  course_code: string;
+  course_title: string;
+  semester: string;
+  section: string;
+  room: string;
+  class_type: string;
+  topic: string;
+  bloom_level: string;
+}
+
+export interface TodayTodo {
+  id: string;
+  course_code: string;
+  course_id: string;
+  category: "prep" | "grading" | "attendance" | "remedial";
+  title: string;
+  description: string;
+  priority: "high" | "medium" | "normal";
+  due_time: string;
+  done: boolean;
+}
+
+export interface SubjectSummaryCard {
+  course_id: string;
+  code: string;
+  title: string;
+  semester: string;
+  section: string;
+  room: string;
+  total_classes: number;
+  completed_classes: number;
+  progress_pct: number;
+  active_topic: string;
+  bloom_level: string;
+  student_count: number;
+  cie_avg: number;
+  pending_tasks_count: number;
+  specific_todos: string[];
+  next_session_number: number;
+  next_timeslot: string;
+}
+
+export interface TodayAgenda {
+  teacher_name: string;
+  date_str: string;
+  day_name?: string;
+  weekly_hours?: number;
+  institution: string;
+  department: string;
+  today_classes: TodayClass[];
+  weekly_timetable?: TimetableSlot[];
+  urgent_todos: TodayTodo[];
+  subject_cards: SubjectSummaryCard[];
+  total_courses: number;
+}
+
+export interface TeacherCreateAdminInput {
+  full_name: string;
+  email: string;
+  department?: string;
+  designation?: string;
+  employee_id: string;
+  password?: string;
+}
+
+export interface CourseCreateAdminInput {
+  teacher_id: string;
+  code: string;
+  title: string;
+  semester: string;
+  academic_year?: string;
+  total_classes?: number;
+  period_duration?: number;
+  section_name?: string;
+  student_count?: number;
+  room_number?: string;
+}
+
+export interface StudentCreateInput {
+  usn: string;
+  full_name: string;
+  email: string;
+  department?: string;
+  semester: number;
+  section: string;
+  batch_year?: string;
+}
+

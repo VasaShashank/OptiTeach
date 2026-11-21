@@ -8,16 +8,19 @@ import { coursesAPI } from "@/lib/api";
 import CurriculumGraphView from "@/components/curriculum-graph-view";
 import AssessmentResults from "@/components/assessment-results";
 import CoursePeople from "@/components/course-people";
+import CourseStudents from "@/components/course-students";
+import InstitutionalOperations from "@/components/institutional-operations";
 import type { Course, CurriculumGraph, CourseAnalytics, AssessmentItem } from "@/lib/types";
 
-type Tab = "overview" | "map" | "results" | "progress" | "people";
+type Tab = "overview" | "map" | "students" | "results" | "progress" | "institutional";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "map", label: "Topic map" },
+  { key: "students", label: "Students & CIE" },
   { key: "results", label: "Test results" },
   { key: "progress", label: "Progress" },
-  { key: "people", label: "People" },
+  { key: "institutional", label: "Academic Operations" },
 ];
 
 const fmt = (n: number) => Math.round(n).toLocaleString();
@@ -34,6 +37,13 @@ export default function CourseDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const t = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("tab") as Tab) : null;
+    if (t && TABS.some((x) => x.key === t)) {
+      setActiveTab(t);
+    }
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -153,6 +163,13 @@ export default function CourseDetailPage() {
             ? <CurriculumGraphView graph={graph} />
             : <NoSyllabus course={course} canEdit={canEdit} />
         )}
+        {activeTab === "students" && (
+          <CourseStudents
+            courseId={courseId}
+            assessments={assessments}
+            onUpdated={refreshAfterResults}
+          />
+        )}
         {activeTab === "results" && (
           <AssessmentResults
             courseId={courseId}
@@ -162,7 +179,15 @@ export default function CourseDetailPage() {
           />
         )}
         {activeTab === "progress" && <ProgressTab analytics={analytics} />}
-        {activeTab === "people" && <CoursePeople courseId={courseId} canManage={course.my_role === "owner" || course.my_role === "admin"} />}
+        {activeTab === "institutional" && (
+          <InstitutionalOperations
+            courseId={courseId}
+            courseCode={course.code}
+            courseTitle={course.title}
+            semester={course.semester}
+            onRefreshCourse={refreshAfterResults}
+          />
+        )}
       </div>
     </div>
   );

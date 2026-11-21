@@ -67,3 +67,13 @@ def save_layout(course_id: str, payload: CurriculumLayout,
                 db: Session = Depends(get_db), _: Course = Depends(get_accessible_course)):
     """Save topic order (and moves between units) in one transaction."""
     return curriculum_editor_service.save_layout(db, course_id, [u.model_dump() for u in payload.units])
+
+
+@router.post("/{course_id}/curriculum/infer-prerequisites")
+def infer_prerequisites(course_id: str,
+                        db: Session = Depends(get_db), _: Course = Depends(get_accessible_course)):
+    """
+    Infers prerequisite dependencies and Bloom's taxonomy levels using Groq LLM
+    (llama-3.3-70b-versatile) or pedagogical semantic knowledge graph.
+    """
+    return curriculum_editor_service.infer_and_apply_prerequisites(db, course_id)

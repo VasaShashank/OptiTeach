@@ -81,7 +81,7 @@ class SlidingWindowLimiter:
 # Failed logins per client IP + email (successful logins reset it)
 login_rate_limiter = SlidingWindowLimiter(5, 60, "Too many failed login attempts. Try again shortly.")
 # Syllabus uploads per user: PDF parsing is the most expensive request the API serves
-upload_rate_limiter = SlidingWindowLimiter(10, 60, "Too many syllabus uploads in a minute. Wait a moment and try again.")
+upload_rate_limiter = SlidingWindowLimiter(30, 60, "Too many syllabus uploads in a minute. Wait a moment and try again.")
 
 
 

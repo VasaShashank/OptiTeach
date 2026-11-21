@@ -102,7 +102,7 @@ class Course(Base):
     teacher_id = Column(String(36), ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False, index=True)
     code = Column(String(50), nullable=False, index=True) # e.g. CS302
     title = Column(String(255), nullable=False) # e.g. Database Management Systems
-    semester = Column(String(50), nullable=False) # e.g. Fall 2026 / Sem 5
+    semester = Column(String(50), nullable=False) # e.g. 5th Sem / 3rd Sem
     academic_year = Column(String(20), default="2026-2027")
     total_classes = Column(Integer, nullable=False) # e.g. 45
     period_duration = Column(Integer, nullable=False, default=60) # minutes (1 hour)
@@ -129,6 +129,7 @@ class Course(Base):
     units = relationship("Unit", back_populates="course", order_by="Unit.order_index", cascade="all, delete-orphan")
     class_sessions = relationship("ClassSession", back_populates="course", order_by="ClassSession.session_number", cascade="all, delete-orphan")
     assessments = relationship("Assessment", back_populates="course", order_by="Assessment.scheduled_date", cascade="all, delete-orphan")
+    enrollments = relationship("StudentEnrollment", back_populates="course", cascade="all, delete-orphan")
 
 
 class Section(Base):
@@ -146,6 +147,7 @@ class Section(Base):
     )
 
     course = relationship("Course", back_populates="sections")
+    enrollments = relationship("StudentEnrollment", back_populates="section")
 
 
 class TeacherConstraint(Base):
@@ -395,6 +397,7 @@ class Assessment(Base):
     course = relationship("Course", back_populates="assessments")
     questions = relationship("Question", back_populates="assessment", order_by="Question.question_number", cascade="all, delete-orphan")
     performances = relationship("Performance", back_populates="assessment", cascade="all, delete-orphan")
+    test_results = relationship("StudentTestResult", back_populates="assessment", cascade="all, delete-orphan")
 
 
 class Question(Base):
@@ -517,3 +520,67 @@ class CourseMember(Base):
 
     course = relationship("Course", back_populates="members")
     teacher = relationship("Teacher")
+
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    usn = Column(String(20), unique=True, nullable=False, index=True)  # Format: CS23001 or 101CS001
+    full_name = Column(String(100), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    department = Column(String(100), nullable=False, default="Computer Science & Engineering")
+    semester = Column(Integer, nullable=False, default=5)
+    section = Column(String(10), nullable=False, default="A")
+    batch_year = Column(String(20), default="2023-2027")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    enrollments = relationship("StudentEnrollment", back_populates="student", cascade="all, delete-orphan")
+
+
+class StudentEnrollment(Base):
+    __tablename__ = "student_enrollments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False, index=True)
+    course_id = Column(String(36), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True)
+    section_id = Column(String(36), ForeignKey("sections.id", ondelete="SET NULL"), nullable=True, index=True)
+    attendance_percentage = Column(Float, default=85.0)
+    cie_total = Column(Float, default=0.0)  # out of 50
+    status = Column(String(20), default="enrolled")  # enrolled, completed, dropped
+    enrolled_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("student_id", "course_id", name="uq_student_course_enrollment"),
+        CheckConstraint("attendance_percentage >= 0.0 AND attendance_percentage <= 100.0", name="check_attendance_pct_range"),
+        CheckConstraint("cie_total >= 0.0 AND cie_total <= 50.0", name="check_cie_total_range"),
+    )
+
+    student = relationship("Student", back_populates="enrollments")
+    course = relationship("Course", back_populates="enrollments")
+    section = relationship("Section", back_populates="enrollments")
+    test_results = relationship("StudentTestResult", back_populates="enrollment", cascade="all, delete-orphan")
+
+
+class StudentTestResult(Base):
+    __tablename__ = "student_test_results"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    enrollment_id = Column(String(36), ForeignKey("student_enrollments.id", ondelete="CASCADE"), nullable=False, index=True)
+    assessment_id = Column(String(36), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    marks_obtained = Column(Float, nullable=False)
+    max_marks = Column(Float, nullable=False, default=20.0)
+    percentage = Column(Float, nullable=False)
+    feedback = Column(Text, nullable=True)
+    recorded_at = Column(DateTime, default=utc_now)
+
+    __table_args__ = (
+        UniqueConstraint("enrollment_id", "assessment_id", name="uq_enrollment_assessment_result"),
+        CheckConstraint("marks_obtained >= 0.0", name="check_marks_obtained_non_negative"),
+        CheckConstraint("marks_obtained <= max_marks", name="check_marks_not_exceed_max"),
+        CheckConstraint("max_marks > 0.0", name="check_positive_assessment_max_marks"),
+    )
+
+    enrollment = relationship("StudentEnrollment", back_populates="test_results")
+    assessment = relationship("Assessment", back_populates="test_results")

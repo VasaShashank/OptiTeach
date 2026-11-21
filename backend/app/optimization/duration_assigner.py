@@ -63,7 +63,29 @@ class PedagogicalDurationAssigner:
         imp = max(1, min(5, imp))
         imp_mult = 0.85 + (0.06 * imp)
 
-        return base_min * diff_mult * bloom_mult * imp_mult
+        # Direct performance on this concept: if cohort test results show weakness (<60%), allocate remedial time
+        direct_deficit_mult = 1.0
+        perfs = getattr(concept, "performances", None) or []
+        if perfs:
+            scores = [p.average_score for p in perfs if getattr(p, "average_score", None) is not None]
+            if scores:
+                c_avg = sum(scores) / len(scores)
+                if c_avg < 60.0:
+                    direct_deficit_mult = 1.0 + ((60.0 - c_avg) / 60.0) * 0.35
+
+        # Prerequisite deficit multiplier: if student cohort struggled on prerequisites (<60%), allocate scaffolding time
+        prereq_mult = 1.0
+        prereqs = getattr(concept, "prerequisites", None) or []
+        for prereq in prereqs:
+            p_perfs = getattr(prereq, "performances", None) or []
+            if p_perfs:
+                scores = [p.average_score for p in p_perfs if getattr(p, "average_score", None) is not None]
+                if scores:
+                    p_avg = sum(scores) / len(scores)
+                    if p_avg < 60.0:
+                        prereq_mult = max(prereq_mult, 1.0 + ((60.0 - p_avg) / 60.0) * 0.40)
+
+        return base_min * diff_mult * bloom_mult * imp_mult * direct_deficit_mult * prereq_mult
 
     def calculate_topic_estimated_minutes(
         self,

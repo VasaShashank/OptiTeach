@@ -107,6 +107,16 @@ After class, the instructor logs actual delivery: minutes spent, teaching method
 ### 8. Assessment & Real-Time Re-Optimization
 The teacher inputs quiz and assignment marks per concept. OptiTeach recalculates concept health scores (*Strong*, *Moderate*, *Weak*, *Bottleneck*), updates course velocity, and **immediately adapts upcoming lesson plans and time allocations**.
 
+### 9. Institutional Operations, Scheduling Realities & NBA Compliance (RVCE / VTU Model)
+Real-world college teaching is messy: fests occur, rain holidays are declared, teachers go on valuation duty, labs desynchronize from theory, and NBA accreditation audits require exhaustive documentation. OptiTeach directly handles these institutional realities:
+- **Unplanned Lost Classes & Dynamic Re-Optimization**: When a class is lost to *8th Mile Fest*, sports day, or bandhs, the instructor can either book a **Saturday Zero-Hour Compensation Slot** or trigger a **Graceful MILP Rebalance** that compresses low-priority descriptive topics while strictly safeguarding critical prerequisite concepts.
+- **Faculty On-Duty (OD) & Proxy Handover Kit**: When going on VTU external evaluation, conference, or medical leave, the faculty member delegates the period to a substitute. OptiTeach generates a **1-Click Proxy Handover Kit** with exact lecture delivery phases, whiteboard worked problems, and formative exit check questions.
+- **Theory vs. Lab Batch Synchronization (Batches A1 & A2)**: In 60-student classrooms split across two laboratory batches, OptiTeach enforces topological precedence, alerting the instructor if a practical experiment is scheduled before the prerequisite theory concept has been taught.
+- **1-Click NBA Course File (SAR) Export**: Generates an audit-ready, printable HTML/PDF Course File containing official RVCE CSE headers, Course Outcomes ($CO_1$ to $CO_5$) $\times$ Bloom's Levels $\times$ PO/PSO matrix, planned vs. actual delivery logs, CIE marks distribution (20/50 passing cutoff), and OBE attainment percentages against the autonomous 60% benchmark.
+- **AICTE Differentiated Instruction (Criterion 2.2)**: Automatically segregates cohorts into **Slow Learners** ($< 20/50$ CIE or $< 40\%$) with assigned Saturday remedial tutorials and problem banks, and **Advanced Learners** ($> 40/50$ CIE or $> 80\%$) with GATE problems, research papers, and mini-project challenges.
+- **Topic Completion Tracking & Syllabus Pace Drift**: Detects whether a difficult topic took 2 periods instead of 1, computing net syllabus drift ($\text{Drift} = \sum (\text{planned} - \text{actual})$) and providing instant rebalancing recommendations.
+- **VTU 85% / 75% Attendance & Condonation Workflow**: Evaluates student attendance under VTU Clauses 8.1 & 8.2 (Safe Zone $\ge 85\%$, Condonation Zone $75\% - 84.9\%$, and Detention Risk $< 75\%$), projecting the maximum reachable percentage to flag mathematically irrecoverable shortages.
+
 ---
 
 ## 👥 User Roles, Permissions & Account Creation
@@ -288,9 +298,13 @@ python -m pytest backend/tests -v
 
 ## 📄 Project Documentation Links
 
+- **[docs/README.md](docs/README.md)**: Master documentation index.
+- **[docs/institutional_framework_rvce_vtu_aicte.md](docs/institutional_framework_rvce_vtu_aicte.md)**: Institutional framework, provenance, and exact statutory data gathered from RVCE, VTU & AICTE/NBA.
+- **[docs/mathematical_formulation.md](docs/mathematical_formulation.md)**: Exact Mixed-Integer Linear Programming (MILP) equations, raw demand formulas, priority scoring, topological DAG sort, and pace drift algorithms.
 - **[docs/DBMS_REPORT.md](docs/DBMS_REPORT.md)**: Comprehensive Database Management Systems report mapped to academic evaluation criteria.
-- **[docs/mathematical_formulation.md](docs/mathematical_formulation.md)**: Exact Mixed-Integer Linear Programming equations and objective functions.
-- **[docs/api_documentation.md](docs/api_documentation.md)**: Full REST API endpoint reference and payload specifications.
+- **[docs/api_documentation.md](docs/api_documentation.md)**: Full REST API endpoint reference and payload specifications across all modules.
+- **[docs/architecture_diagrams.md](docs/architecture_diagrams.md)**: System architecture and sequence diagrams.
+- **[docs/user_manual.md](docs/user_manual.md)**: Operational user manual for Faculty Instructors and Department Administrators.
 - **[PENDING_IMPLEMENTATIONS_AND_EXTENSIONS.md](PENDING_IMPLEMENTATIONS_AND_EXTENSIONS.md)**: Active engineering roadmap, completed features, and future LMS integration specifications.
 
 ---

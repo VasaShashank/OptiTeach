@@ -46,3 +46,14 @@ def export_course_outcomes_matrix(course_id: str, db: Session = Depends(get_db),
         return export_service.generate_outcome_matrix(db, course_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+@router.get("/courses/{course_id}/nba-course-file")
+def export_nba_course_file(course_id: str, db: Session = Depends(get_db), _: Course = Depends(get_accessible_course)):
+    """Export Comprehensive 1-Click NBA / Autonomous Course File (Printable HTML/PDF)"""
+    try:
+        html_content = export_service.generate_nba_course_file_html(db, course_id)
+        return Response(content=html_content, media_type="text/html")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e

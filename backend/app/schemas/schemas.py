@@ -395,3 +395,88 @@ class QueryDemoResult(BaseModel):
     columns: List[str]
     rows: List[Dict[str, Any]]
     execution_time_ms: float
+
+
+# -------------------------------------------------------------
+# Student & Administration Schemas (Autonomous Academic System)
+# -------------------------------------------------------------
+class StudentOut(BaseModel):
+    id: str
+    usn: str
+    full_name: str
+    email: str
+    department: str
+    semester: int
+    section: str
+    batch_year: str
+    attendance_percentage: float = 85.0
+    cie_total: float = 0.0
+    status: str = "enrolled"
+    is_at_risk: bool = False
+    test_scores: Dict[str, float] = {}  # assessment_title -> marks_obtained
+
+class StudentCreate(BaseModel):
+    usn: str
+    full_name: str
+    email: EmailStr
+    department: str = "Computer Science & Engineering"
+    semester: int = 5
+    section: str = "A"
+    batch_year: str = "2023-2027"
+
+class CourseMappingOut(BaseModel):
+    course_id: str
+    code: str
+    title: str
+    semester: str
+    section_name: str
+    teacher_id: str
+    teacher_name: str
+    teacher_email: str
+    student_count: int
+    units_count: int
+    total_classes: int
+
+class CourseMappingUpdate(BaseModel):
+    teacher_id: str
+    section_name: Optional[str] = None
+
+class AdminOverviewOut(BaseModel):
+    institution_name: str = "Autonomous Engineering Institution"
+    department_name: str = "Computer Science & Engineering"
+    total_teachers: int
+    total_courses: int
+    total_sections: int
+    total_students: int
+    average_attendance: float
+    at_risk_students_count: int
+    attainment_rate_percentage: float
+
+class RecordStudentTestResultIn(BaseModel):
+    student_id: str
+    assessment_id: str
+    marks_obtained: float
+    max_marks: float = 20.0
+    feedback: Optional[str] = None
+
+class TeacherCreateAdmin(BaseModel):
+    full_name: str
+    email: EmailStr
+    department: str = "Computer Science & Engineering"
+    designation: str = "Assistant Professor"
+    employee_id: str
+    password: Optional[str] = "faculty123"
+
+class CourseCreateAdmin(BaseModel):
+    teacher_id: str
+    code: str
+    title: str
+    semester: str
+    academic_year: str = "2026-2027"
+    total_classes: int = 45
+    period_duration: int = 60
+    section_name: str = "Section A"
+    student_count: int = 60
+    room_number: Optional[str] = "Classroom 101"
+
+

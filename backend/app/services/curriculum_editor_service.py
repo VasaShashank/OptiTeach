@@ -163,5 +163,55 @@ class CurriculumEditorService:
             raise
         return self.structure(db, course_id)
 
+    # ------------------------------------------------------------------ AI Prerequisite Inference
+    def infer_and_apply_prerequisites(self, db: Session, course_id: str) -> Dict[str, Any]:
+        """
+        Infers deep pedagogical prerequisite relationships using Groq LLM (when configured)
+        or the CS knowledge taxonomy semantic engine, updating the curriculum graph.
+        """
+        from app.models.entities import Course
+        from app.nlp.llm_prerequisite_engine import llm_prerequisite_engine
+
+        course = db.get(Course, course_id)
+        course_title = course.title if course else "Course Curriculum"
+
+        curr_data = self.structure(db, course_id)
+        result = llm_prerequisite_engine.infer_course_prerequisites(course_title, curr_data["units"])
+
+        # Concept map for this course
+        concepts = self._course_concepts(db, course_id)
+        concept_ids = set(concepts.keys())
+
+        # Clear existing synthetic prerequisites for these concepts
+        if concept_ids:
+            db.execute(delete(prerequisites).where(prerequisites.c.concept_id.in_(concept_ids)))
+
+        # Update Bloom's levels if inferred
+        for cid, bloom in result.get("bloom_levels", {}).items():
+            if cid in concepts:
+                concepts[cid].bloom_level = bloom
+
+        # Insert inferred valid edges
+        added_count = 0
+        for edge in result.get("edges", []):
+            src_id = edge["source_id"]
+            tgt_id = edge["target_id"]
+            if src_id in concepts and tgt_id in concepts and src_id != tgt_id:
+                try:
+                    db.execute(insert(prerequisites).values(concept_id=tgt_id, prerequisite_id=src_id))
+                    added_count += 1
+                except Exception:
+                    pass
+
+        db.commit()
+        artifact_service.snapshot_curriculum_graph(db, course_id, reason=f"AI prerequisite inference via {result['provider']}")
+        return {
+            "status": "success",
+            "provider": result["provider"],
+            "edges_count": added_count,
+            "edges": result.get("edges", []),
+            "cycles_prevented": result.get("cycles_prevented", 0),
+        }
+
 
 curriculum_editor_service = CurriculumEditorService()

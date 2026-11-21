@@ -11,11 +11,267 @@ from app.auth.security import hash_password
 from app.models.entities import (
     User, Teacher, Course, Section, TeacherConstraint, CourseOutcome,
     Unit, Topic, Concept, ClassSession, TeachingMethod, TeachingSession, Assessment, Question, Performance, MethodEffectiveness,
-    teacher_preferred_methods
+    teacher_preferred_methods, Student, StudentEnrollment, StudentTestResult, CourseMember
 )
 from app.database.mongo_schema import ensure_mongo_schema
 from app.services.artifact_service import artifact_service
 from app.optimization.time_allocator import time_allocator
+import random
+
+def _seed_rvce_multi_course_ecosystem(db: Session, teacher_turing: Teacher, course_dbms: Course):
+    print("Seeding RVCE Multi-Course & Multi-Semester Faculty Mappings...")
+    # 1. Extra Faculty: Dr. Radhika K. R. (HOD) & Prof. C. S. Anitha
+    u_radhika = db.query(User).filter(User.email == "radhika@rvce.edu.in").first()
+    if not u_radhika:
+        u_radhika = User(
+            email="radhika@rvce.edu.in",
+            hashed_password=hash_password("admin123"),
+            full_name="Dr. Radhika K. R.",
+            role="teacher"
+        )
+        db.add(u_radhika)
+        db.flush()
+        t_radhika = Teacher(
+            user_id=u_radhika.id,
+            department="Computer Science & Engineering",
+            designation="Professor & HOD",
+            employee_id="1RVFAC-CS-010",
+            office_location="Admin Block, CS HOD Room"
+        )
+        db.add(t_radhika)
+        db.flush()
+    else:
+        t_radhika = u_radhika.teacher_profile
+
+    u_anitha = db.query(User).filter(User.email == "anitha@rvce.edu.in").first()
+    if not u_anitha:
+        u_anitha = User(
+            email="anitha@rvce.edu.in",
+            hashed_password=hash_password("admin123"),
+            full_name="Prof. C. S. Anitha",
+            role="teacher"
+        )
+        db.add(u_anitha)
+        db.flush()
+        t_anitha = Teacher(
+            user_id=u_anitha.id,
+            department="Computer Science & Engineering",
+            designation="Assistant Professor",
+            employee_id="1RVFAC-CS-025",
+            office_location="Turing Hall, Room 204"
+        )
+        db.add(t_anitha)
+        db.flush()
+    else:
+        t_anitha = u_anitha.teacher_profile
+
+    # 2. Multi-Semester Courses
+    # Sem 5 Sec B: Operating Systems (21CS53 / CS503) taught by Prof. Turing
+    course_os = db.query(Course).filter(Course.code == "CS503").first()
+    if not course_os:
+        course_os = Course(
+            teacher_id=teacher_turing.id,
+            code="CS503",
+            title="Operating Systems (21CS53)",
+            semester="Sem 5 - Section B",
+            academic_year="2026-2027",
+            total_classes=45,
+            period_duration=60,
+            start_date=datetime.datetime(2026, 8, 1, 9, 0),
+            end_date=datetime.datetime(2026, 12, 15, 17, 0)
+        )
+        db.add(course_os)
+        db.flush()
+        sec_os = Section(course_id=course_os.id, name="Section B", room_number="Lab Block 202", student_count=60)
+        db.add(sec_os)
+        u_os1 = Unit(course_id=course_os.id, unit_number=1, title="OS Structures & Process Scheduling", order_index=1)
+        db.add(u_os1)
+        db.flush()
+        t_os1 = Topic(unit_id=u_os1.id, title="Processes, Threads & CPU Scheduling", order_index=1, estimated_minutes=180, allocated_minutes=180, status="completed")
+        db.add(t_os1)
+        db.flush()
+        c_os1 = Concept(topic_id=t_os1.id, name="Process State & PCB", difficulty=3, importance=4, concept_type="conceptual", order_index=1)
+        db.add(c_os1)
+        db.flush()
+        a_os1 = Assessment(course_id=course_os.id, title="CIE-I: Process Management", assessment_type="midterm", max_marks=20.0, scheduled_date=datetime.datetime(2026, 9, 15, 10, 0), status="completed")
+        db.add(a_os1)
+        db.flush()
+
+    # Sem 3 Sec A: Data Structures & Applications (21CS32 / CS301) taught by Dr. Radhika, co-taught by Turing
+    course_dsa = db.query(Course).filter(Course.code == "CS301").first()
+    if not course_dsa:
+        course_dsa = Course(
+            teacher_id=t_radhika.id,
+            code="CS301",
+            title="Data Structures & Applications (21CS32)",
+            semester="Sem 3 - Section A",
+            academic_year="2026-2027",
+            total_classes=45,
+            period_duration=60,
+            start_date=datetime.datetime(2026, 8, 1, 9, 0),
+            end_date=datetime.datetime(2026, 12, 15, 17, 0)
+        )
+        db.add(course_dsa)
+        db.flush()
+        sec_dsa = Section(course_id=course_dsa.id, name="Section A", room_number="Turing Hall 101", student_count=60)
+        db.add(sec_dsa)
+        db.add(CourseMember(course_id=course_dsa.id, teacher_id=teacher_turing.id, role="co_teacher"))
+        u_dsa1 = Unit(course_id=course_dsa.id, unit_number=1, title="Stacks, Queues & Recursion", order_index=1)
+        db.add(u_dsa1)
+        db.flush()
+        t_dsa1 = Topic(unit_id=u_dsa1.id, title="Stack Operations & Expression Evaluation", order_index=1, estimated_minutes=180, allocated_minutes=180, status="completed")
+        db.add(t_dsa1)
+        db.flush()
+        c_dsa1 = Concept(topic_id=t_dsa1.id, name="Infix to Postfix Conversion", difficulty=4, importance=5, concept_type="problem_solving", order_index=1)
+        db.add(c_dsa1)
+        db.flush()
+        a_dsa1 = Assessment(course_id=course_dsa.id, title="CIE-I: Stacks & Queues", assessment_type="midterm", max_marks=20.0, scheduled_date=datetime.datetime(2026, 9, 12, 11, 0), status="completed")
+        db.add(a_dsa1)
+        db.flush()
+
+    # Sem 7 Sec A: Cloud Computing & Big Data (21CS71 / CS701) taught by Prof. Anitha
+    course_cloud = db.query(Course).filter(Course.code == "CS701").first()
+    if not course_cloud:
+        course_cloud = Course(
+            teacher_id=t_anitha.id,
+            code="CS701",
+            title="Cloud Computing & Big Data (21CS71)",
+            semester="Sem 7 - Section A",
+            academic_year="2026-2027",
+            total_classes=40,
+            period_duration=60,
+            start_date=datetime.datetime(2026, 8, 1, 9, 0),
+            end_date=datetime.datetime(2026, 12, 15, 17, 0)
+        )
+        db.add(course_cloud)
+        db.flush()
+        sec_cloud = Section(course_id=course_cloud.id, name="Section A", room_number="Server Lab 305", student_count=55)
+        db.add(sec_cloud)
+        u_cl1 = Unit(course_id=course_cloud.id, unit_number=1, title="Cloud Architecture & Virtualization", order_index=1)
+        db.add(u_cl1)
+        db.flush()
+        t_cl1 = Topic(unit_id=u_cl1.id, title="Hypervisors, Containers & Microservices", order_index=1, estimated_minutes=180, allocated_minutes=180, status="completed")
+        db.add(t_cl1)
+        db.flush()
+        c_cl1 = Concept(topic_id=t_cl1.id, name="Docker & Container Orchestration", difficulty=3, importance=5, concept_type="practical", order_index=1)
+        db.add(c_cl1)
+        db.flush()
+        a_cl1 = Assessment(course_id=course_cloud.id, title="Quiz 1: Virtualization", assessment_type="quiz", max_marks=20.0, scheduled_date=datetime.datetime(2026, 9, 18, 14, 0), status="completed")
+        db.add(a_cl1)
+        db.flush()
+
+    # 3. Seed Realistic RVCE Students
+    print("Seeding 60+ RVCE Students with USNs, CIE Marks & Prerequisite Weaknesses...")
+    first_names = [
+        "Aarav", "Aditya", "Akash", "Ananya", "Aniket", "Bhavya", "Chetan", "Deepika",
+        "Dhruv", "Gautam", "Harini", "Harsh", "Isha", "Ishaan", "Kavya", "Keerthi",
+        "Manish", "Meghana", "Naveen", "Nikhil", "Nithya", "Pooja", "Pranav", "Prathik",
+        "Rahul", "Rakesh", "Riya", "Rohan", "Sanjay", "Shreya", "Siddharth", "Sneha",
+        "Sourabh", "Suhas", "Swathi", "Tanvi", "Tarun", "Tejas", "Varun", "Vikas"
+    ]
+    last_names = [
+        "Bhat", "Deshpande", "Gowda", "Hegde", "Iyengar", "Joshi", "Kulkarni", "Kumar",
+        "Murthy", "Nayak", "Patil", "Prasad", "Rao", "Reddy", "Sharma", "Shetty",
+        "Singh", "Srinivasan", "Verma", "Venkatesh"
+    ]
+
+    random.seed(42)
+    assessments_dbms = course_dbms.assessments
+    sec_dbms = course_dbms.sections[0] if course_dbms.sections else None
+
+    # Sem 5 Students for CS302 (DBMS)
+    for i in range(1, 61):
+        usn = f"1RV23CS{i:03d}"
+        fn = first_names[(i - 1) % len(first_names)]
+        ln = last_names[(i * 3) % len(last_names)]
+        student = db.query(Student).filter(Student.usn == usn).first()
+        if not student:
+            student = Student(
+                usn=usn,
+                full_name=f"{fn} {ln}",
+                email=f"{fn.lower()}.{ln.lower()}{i}@rvce.edu.in",
+                department="Computer Science & Engineering",
+                semester=5,
+                section="A",
+                batch_year="2023-2027"
+            )
+            db.add(student)
+            db.flush()
+
+        enr_dbms = db.query(StudentEnrollment).filter(
+            StudentEnrollment.student_id == student.id,
+            StudentEnrollment.course_id == course_dbms.id
+        ).first()
+
+        if not enr_dbms:
+            att = round(max(58.0, min(98.0, random.gauss(86.0, 7.5))), 1)
+            enr_dbms = StudentEnrollment(
+                student_id=student.id,
+                course_id=course_dbms.id,
+                section_id=sec_dbms.id if sec_dbms else None,
+                attendance_percentage=att,
+                cie_total=0.0,
+                status="enrolled"
+            )
+            db.add(enr_dbms)
+            db.flush()
+
+            cie_acc = 0.0
+            for assess in assessments_dbms:
+                if "Quiz 2" in assess.title or "Functional" in assess.title:
+                    pct = max(22.0, min(95.0, random.gauss(52.5, 13.0)))
+                else:
+                    pct = max(35.0, min(98.0, random.gauss(76.0, 10.0)))
+
+                marks = round((pct / 100.0) * assess.max_marks, 1)
+                tr = StudentTestResult(
+                    enrollment_id=enr_dbms.id,
+                    assessment_id=assess.id,
+                    marks_obtained=marks,
+                    max_marks=assess.max_marks,
+                    percentage=round(pct, 1),
+                    feedback="Needs revision on attribute closure and minimal cover" if pct < 60.0 else "Satisfactory"
+                )
+                db.add(tr)
+                cie_acc += (marks / assess.max_marks) * (15.0 if assess.assessment_type == "quiz" else 25.0)
+
+            enr_dbms.cie_total = min(50.0, round(cie_acc, 1))
+
+    # Sem 3 Students for CS301 (DSA)
+    for i in range(1, 31):
+        usn = f"1RV24CS{i:03d}"
+        fn = first_names[(i + 5) % len(first_names)]
+        ln = last_names[(i * 2) % len(last_names)]
+        s_sem3 = db.query(Student).filter(Student.usn == usn).first()
+        if not s_sem3:
+            s_sem3 = Student(
+                usn=usn,
+                full_name=f"{fn} {ln}",
+                email=f"{fn.lower()}.{ln.lower()}{i}@rvce.edu.in",
+                department="Computer Science & Engineering",
+                semester=3,
+                section="A",
+                batch_year="2024-2028"
+            )
+            db.add(s_sem3)
+            db.flush()
+
+        enr_dsa = db.query(StudentEnrollment).filter(
+            StudentEnrollment.student_id == s_sem3.id,
+            StudentEnrollment.course_id == course_dsa.id
+        ).first()
+        if not enr_dsa:
+            enr_dsa = StudentEnrollment(
+                student_id=s_sem3.id,
+                course_id=course_dsa.id,
+                attendance_percentage=round(random.uniform(78.0, 95.0), 1),
+                cie_total=round(random.uniform(28.0, 46.0), 1),
+                status="enrolled"
+            )
+            db.add(enr_dsa)
+
+    db.commit()
+    print("RVCE Multi-Course Ecosystem and Student Simulation Seed completed successfully!")
 
 def seed_database():
     print("Initializing Database tables...")
@@ -76,7 +332,7 @@ def seed_database():
             teacher_id=teacher.id,
             code="CS302",
             title="Database Management Systems",
-            semester="Fall 2026",
+            semester="5th Sem",
             academic_year="2026-2027",
             total_classes=45,
             period_duration=60,
@@ -403,6 +659,9 @@ def seed_database():
             )
             db.add(sess)
             curr_dt += datetime.timedelta(days=1)
+
+        # Seed RVCE Multi-Course & Multi-Semester Ecosystem (Teachers, Sections, Students, Test Results)
+        _seed_rvce_multi_course_ecosystem(db, teacher, course)
 
         db.commit()
 

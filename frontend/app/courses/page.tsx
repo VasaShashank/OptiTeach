@@ -1,15 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Upload, Trash2, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Upload,
+  Trash2,
+  BookOpen,
+  Calendar,
+  Layers,
+  GraduationCap,
+  Sparkles,
+  ExternalLink,
+  Clock,
+  MapPin,
+  Users,
+} from "lucide-react";
 import { coursesAPI } from "@/lib/api";
+import { useSession } from "@/lib/auth";
 import type { Course } from "@/lib/types";
 
-const ROLE_NOTE: Record<string, string> = { co_teacher: "Shared with you (co-teacher)", viewer: "Shared with you (view only)" };
-
 export default function CoursesPage() {
+  const { user } = useSession();
   const [courses, setCourses] = useState<Course[] | null>(null);
+  const [selectedSemester, setSelectedSemester] = useState<string>("all");
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<Course | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
@@ -18,69 +32,263 @@ export default function CoursesPage() {
     coursesAPI.list().then(setCourses).catch(() => setCourses([]));
   }, []);
 
-  if (courses === null) return <div className="skeleton" style={{ height: 240 }} />;
+  // Extract distinct semesters
+  const semesters = useMemo(() => {
+    if (!courses) return [];
+    const set = new Set(courses.map((c) => c.semester));
+    return Array.from(set).sort();
+  }, [courses]);
+
+  // Group courses by semester
+  const groupedCourses = useMemo(() => {
+    if (!courses) return {};
+    const filtered = selectedSemester === "all"
+      ? courses
+      : courses.filter((c) => c.semester === selectedSemester);
+
+    const groups: Record<string, Course[]> = {};
+    for (const c of filtered) {
+      if (!groups[c.semester]) groups[c.semester] = [];
+      groups[c.semester].push(c);
+    }
+    return groups;
+  }, [courses, selectedSemester]);
+
+  if (courses === null) return <div className="skeleton" style={{ height: 260 }} />;
+
+  const isAdmin = user?.role === "admin";
 
   return (
-    <div className="animate-fade-in">
-      <header className="page-header">
-        <div>
-          <h1>Courses</h1>
-          <p>Your courses, and any a colleague has shared with you.</p>
+    <div className="animate-fade-in" style={{ display: "grid", gap: 24, paddingBottom: 40 }}>
+      {/* Header */}
+      <header
+        className="card"
+        style={{
+          padding: "22px 26px",
+          background: "linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(30,58,138,0.02) 100%)",
+          borderLeft: "4px solid var(--primary)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.75rem", fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+              <span>CSE Department · Autonomous Curriculum</span>
+            </div>
+            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: 0 }}>
+              {isAdmin ? "Department Courses & Curriculum Allotments" : "My Assigned Courses & Workloads"}
+            </h1>
+            <p style={{ color: "var(--pencil)", margin: "4px 0 0", fontSize: "0.95rem" }}>
+              {isAdmin
+                ? "Institutional course allocations categorized by semester cohorts, curriculum structures, and faculty mappings."
+                : "Your teaching workload organized semester-wise across different cohorts and sections."}
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+              <Plus size={16} /> New Course
+            </button>
+            <Link href="/upload" className="btn btn-secondary">
+              <Upload size={16} /> Import Syllabus
+            </Link>
+          </div>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-          <Plus size={16} /> New course
-        </button>
+
+        {/* Semester Filter Tabs */}
+        {semesters.length > 0 && (
+          <div style={{ display: "flex", gap: 8, marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--rule)", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setSelectedSemester("all")}
+              style={{
+                padding: "6px 14px",
+                fontSize: "0.825rem",
+                fontWeight: 600,
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--rule)",
+                background: selectedSemester === "all" ? "var(--primary)" : "var(--canvas)",
+                color: selectedSemester === "all" ? "#ffffff" : "var(--ink)",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              All Semesters ({courses.length})
+            </button>
+            {semesters.map((sem) => {
+              const count = courses.filter((c) => c.semester === sem).length;
+              return (
+                <button
+                  key={sem}
+                  type="button"
+                  onClick={() => setSelectedSemester(sem)}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: "0.825rem",
+                    fontWeight: 600,
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--rule)",
+                    background: selectedSemester === sem ? "var(--primary)" : "var(--canvas)",
+                    color: selectedSemester === sem ? "#ffffff" : "var(--ink)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {sem} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
       </header>
 
+      {/* Courses Display Grouped by Semester */}
       {courses.length === 0 ? (
-        <div style={{ maxWidth: 520 }}>
-          <p style={{ marginBottom: 16 }}>You don&apos;t have any courses yet. Create one, then import its syllabus to lay out the topics.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> New course</button>
+        <div className="card" style={{ padding: 40, maxWidth: 540, margin: "20px auto", textAlign: "center" }}>
+          <BookOpen size={36} color="var(--pencil)" style={{ margin: "0 auto 12px" }} />
+          <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 8px" }}>No courses found</h2>
+          <p style={{ color: "var(--pencil)", fontSize: "0.9rem", margin: "0 0 20px" }}>
+            You haven&apos;t created or been assigned any courses yet. Create a course or import a syllabus to begin.
+          </p>
+          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+            <Plus size={16} /> Create Course
+          </button>
         </div>
       ) : (
-        <ul className="course-list">
-          {courses.map((c) => (
-            <li key={c.id}>
-              <Link href={`/courses/${c.id}`} className="course-row">
-                <span className="course-row__code">{c.code}</span>
-                <span className="course-row__main">
-                  <strong>{c.title}</strong>
-                  <span>
-                    {c.semester}, {c.total_classes} periods of {c.period_duration} min
-                    {ROLE_NOTE[c.my_role] ? `. ${ROLE_NOTE[c.my_role]}` : ""}
+        <div style={{ display: "grid", gap: 28 }}>
+          {Object.entries(groupedCourses).map(([semesterName, semCourses]) => (
+            <section key={semesterName} style={{ display: "grid", gap: 14 }}>
+              {/* Semester Group Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--rule)", paddingBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span
+                    style={{
+                      background: "var(--primary)",
+                      color: "#ffffff",
+                      fontSize: "0.75rem",
+                      fontWeight: 800,
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    SEMESTER
                   </span>
-                </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span className="course-row__status">
-                    {c.units_count === 0
-                      ? <span className="badge badge-warning">Needs a syllabus</span>
-                      : <span style={{ color: "var(--pencil)" }}>{c.topics_count} topics, {c.concepts_count} concepts</span>}
-                  </span>
-                  {(c.my_role === "owner" || c.my_role === "admin") && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      style={{
-                        padding: "6px 8px",
-                        color: "var(--redpen)",
-                        borderRadius: "var(--radius-sm)",
-                        cursor: "pointer",
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setCourseToDelete(c);
-                      }}
-                      title={`Delete ${c.code}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+                  <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>
+                    {semesterName}
+                  </h2>
                 </div>
-              </Link>
-            </li>
+                <span style={{ fontSize: "0.85rem", color: "var(--pencil)", fontWeight: 600 }}>
+                  {semCourses.length} {semCourses.length === 1 ? "Course" : "Courses"} &middot; {semCourses.reduce((acc, c) => acc + c.total_classes, 0)} Total Periods
+                </span>
+              </div>
+
+              {/* Course Cards for this Semester */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
+                {semCourses.map((c) => (
+                  <div
+                    key={c.id}
+                    className="card"
+                    style={{
+                      padding: 20,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      transition: "box-shadow 0.15s ease",
+                    }}
+                  >
+                    <div>
+                      {/* Top Badges */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
+                        <span
+                          style={{
+                            fontSize: "0.8rem",
+                            fontWeight: 800,
+                            padding: "2px 8px",
+                            background: "rgba(37,99,235,0.08)",
+                            color: "var(--primary)",
+                            borderRadius: 4,
+                          }}
+                        >
+                          {c.code}
+                        </span>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {c.units_count === 0 ? (
+                            <span className="badge badge-warning" style={{ fontSize: "0.75rem" }}>
+                              Needs Syllabus
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: "0.75rem", color: "var(--pencil)", fontWeight: 600 }}>
+                              {c.units_count} Units &middot; {c.topics_count} Topics
+                            </span>
+                          )}
+
+                          {(c.my_role === "owner" || c.my_role === "admin" || isAdmin) && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              style={{ padding: "4px 6px", color: "var(--redpen)", cursor: "pointer" }}
+                              onClick={() => setCourseToDelete(c)}
+                              title={`Delete ${c.code}`}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Course Title */}
+                      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px" }}>
+                        <Link href={`/courses/${c.id}`} style={{ color: "var(--ink)", textDecoration: "none" }}>
+                          {c.title}
+                        </Link>
+                      </h3>
+
+                      {/* Faculty & Section Info */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: "0.825rem", color: "var(--pencil)", margin: "8px 0" }}>
+                        {c.teacher_name && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: "var(--ink)" }}>
+                            <Users size={14} color="var(--primary)" /> {c.teacher_name}
+                          </span>
+                        )}
+                        <span>&bull;</span>
+                        <span>{c.section_name || "Section A"}</span>
+                        <span>&bull;</span>
+                        <span>{c.total_classes} periods ({c.period_duration}m)</span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action Links */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--rule)" }}>
+                      <Link
+                        href={`/courses/${c.id}`}
+                        className="btn btn-primary"
+                        style={{ flex: 1, fontSize: "0.8rem", justifyContent: "center" }}
+                      >
+                        Open Course
+                      </Link>
+                      <Link
+                        href={`/curriculum?course=${c.id}`}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "0.8rem", padding: "4px 10px" }}
+                        title="View Curriculum Graph"
+                      >
+                        Graph
+                      </Link>
+                      <Link
+                        href={`/optimization?course=${c.id}`}
+                        className="btn btn-ghost"
+                        style={{ fontSize: "0.8rem", padding: "4px 10px" }}
+                        title="View Time Plan"
+                      >
+                        Time Plan
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
 
       {courseToDelete && (
@@ -97,20 +305,34 @@ export default function CoursesPage() {
       {creating && (
         <NewCourseDialog
           onClose={() => setCreating(false)}
-          onCreated={(c) => { setCourses((prev) => [...(prev || []), c]); setCreating(false); setCreated(c); }}
+          onCreated={(c) => {
+            setCourses((prev) => [...(prev || []), c]);
+            setCreating(false);
+            setCreated(c);
+          }}
         />
       )}
 
       {created && (
-        <div className="modal-overlay" onClick={() => setCreated(null)}>
-          <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="created-title" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
-            <h2 id="created-title" style={{ fontSize: "1.3rem" }}>{created.code} is ready.</h2>
-            <p style={{ color: "var(--pencil)", margin: "8px 0 20px" }}>
-              Import its syllabus next: OptiTeach reads the units, topics and course outcomes, and you check them before anything is saved.
+        <div className="modal-backdrop" onClick={() => setCreated(null)}>
+          <div
+            className="modal-box card"
+            style={{ maxWidth: 480, padding: 26 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "1.3rem", margin: "0 0 8px", fontWeight: 700 }}>
+              {created.code} is ready.
+            </h2>
+            <p style={{ color: "var(--pencil)", margin: "0 0 20px", fontSize: "0.9rem", lineHeight: 1.5 }}>
+              Import its syllabus next: OptiTeach reads the units, topics and course outcomes, and you can inspect and approve them before saving.
             </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Link href={`/upload?courseId=${created.id}`} className="btn btn-primary"><Upload size={16} /> Import syllabus</Link>
-              <Link href={`/courses/${created.id}`} className="btn btn-secondary">Open the course</Link>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <Link href={`/upload?courseId=${created.id}`} className="btn btn-primary">
+                <Upload size={16} /> Import Syllabus
+              </Link>
+              <Link href={`/courses/${created.id}`} className="btn btn-secondary">
+                Open Course
+              </Link>
             </div>
           </div>
         </div>
@@ -121,12 +343,18 @@ export default function CoursesPage() {
 
 function NewCourseDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (c: Course) => void }) {
   const [form, setForm] = useState({
-    code: "", title: "", semester: "", academic_year: "2026-2027",
-    total_classes: 45, period_duration: 60, section_name: "Section A", student_count: 60,
+    code: "",
+    title: "",
+    semester: "5th Sem",
+    academic_year: "2024-2025",
+    total_classes: 45,
+    period_duration: 60,
+    section_name: "Section A",
+    student_count: 60,
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const set = (field: keyof typeof form, numeric = false) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (field: keyof typeof form, numeric = false) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm({ ...form, [field]: numeric ? Number(e.target.value) : e.target.value });
 
   const submit = async (e: React.FormEvent) => {
@@ -137,32 +365,71 @@ function NewCourseDialog({ onClose, onCreated }: { onClose: () => void; onCreate
       onCreated(await coursesAPI.create(form));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create the course");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
-  const total = form.total_classes * form.period_duration;
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="new-course-title" style={{ maxWidth: 560, width: "100%" }} onClick={(e) => e.stopPropagation()}>
-        <h2 id="new-course-title" style={{ fontSize: "1.3rem" }}>New course</h2>
-        <form onSubmit={submit} className="form-grid" style={{ marginTop: 12 }}>
-          <label className="field">Code<input className="input" required placeholder="CS302" value={form.code} onChange={set("code")} /></label>
-          <label className="field" style={{ gridColumn: "span 3" }}>Title<input className="input" required placeholder="Database Management Systems" value={form.title} onChange={set("title")} /></label>
-          <label className="field" style={{ gridColumn: "span 2" }}>Semester<input className="input" required placeholder="Fall 2026" value={form.semester} onChange={set("semester")} /></label>
-          <label className="field" style={{ gridColumn: "span 2" }}>Academic year<input className="input" value={form.academic_year} onChange={set("academic_year")} /></label>
-          <label className="field" style={{ gridColumn: "span 2" }}>Periods in the semester<input className="input" type="number" min={1} value={form.total_classes} onChange={set("total_classes", true)} /></label>
-          <label className="field" style={{ gridColumn: "span 2" }}>Minutes per period (1 hr = 60 min)<input className="input" type="number" min={1} value={form.period_duration} onChange={set("period_duration", true)} /></label>
-          <label className="field" style={{ gridColumn: "span 2" }}>Section<input className="input" value={form.section_name} onChange={set("section_name")} /></label>
-          <label className="field" style={{ gridColumn: "span 2" }}>Students<input className="input" type="number" min={1} value={form.student_count} onChange={set("student_count", true)} /></label>
-          <p style={{ gridColumn: "1 / -1", color: "var(--pencil)" }}>
-            That&apos;s {total.toLocaleString()} minutes of teaching to plan.
-          </p>
-          {error && <p role="alert" style={{ gridColumn: "1 / -1", color: "var(--redpen)", fontWeight: 600 }}>{error}</p>}
-          <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Creating…" : "Create course"}</button>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box card" style={{ maxWidth: 500, padding: 26 }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: "0 0 6px", fontSize: "1.25rem", fontWeight: 700 }}>New Course</h2>
+        <p style={{ color: "var(--pencil)", margin: "0 0 16px", fontSize: "0.85rem" }}>
+          Set up a new semester course offering and map the default section.
+        </p>
+
+        {error && (
+          <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.1)", color: "var(--redpen)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", marginBottom: 14 }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={submit} style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+            <div>
+              <label className="label" style={{ fontSize: "0.85rem", marginBottom: 4 }}>Course Code</label>
+              <input className="input" placeholder="e.g. CS302" value={form.code} onChange={set("code")} required />
+            </div>
+            <div>
+              <label className="label" style={{ fontSize: "0.85rem", marginBottom: 4 }}>Course Title</label>
+              <input className="input" placeholder="e.g. Database Management Systems" value={form.title} onChange={set("title")} required />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label className="label" style={{ fontSize: "0.85rem", marginBottom: 4 }}>Semester</label>
+              <select className="select" value={form.semester} onChange={set("semester")}>
+                <option value="3rd Sem">3rd Sem</option>
+                <option value="4th Sem">4th Sem</option>
+                <option value="5th Sem">5th Sem</option>
+                <option value="6th Sem">6th Sem</option>
+                <option value="7th Sem">7th Sem</option>
+                <option value="8th Sem">8th Sem</option>
+              </select>
+            </div>
+            <div>
+              <label className="label" style={{ fontSize: "0.85rem", marginBottom: 4 }}>Section</label>
+              <input className="input" placeholder="e.g. Section A" value={form.section_name} onChange={set("section_name")} required />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label className="label" style={{ fontSize: "0.85rem", marginBottom: 4 }}>Total Periods</label>
+              <input className="input" type="number" min={15} max={90} value={form.total_classes} onChange={set("total_classes", true)} required />
+            </div>
+            <div>
+              <label className="label" style={{ fontSize: "0.85rem", marginBottom: 4 }}>Enrolled Students</label>
+              <input className="input" type="number" min={1} max={120} value={form.student_count} onChange={set("student_count", true)} required />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? "Creating..." : "Create Course"}
+            </button>
           </div>
         </form>
       </div>
@@ -170,19 +437,18 @@ function NewCourseDialog({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
-function DeleteCourseDialog({
-  course,
-  onClose,
-  onDeleted,
-}: {
-  course: Course;
-  onClose: () => void;
-  onDeleted: () => void;
-}) {
+function DeleteCourseDialog({ course, onClose, onDeleted }: { course: Course; onClose: () => void; onDeleted: () => void }) {
+  const [confirmInput, setConfirmInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const confirmDelete = async () => {
+  const handleDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (confirmInput.trim().toUpperCase() !== course.code.toUpperCase()) {
+      setError(`Type "${course.code}" exactly to confirm deletion.`);
+      return;
+    }
+
     setBusy(true);
     setError(null);
     try {
@@ -190,50 +456,51 @@ function DeleteCourseDialog({
       onDeleted();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete course");
+    } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-course-title"
-        style={{ maxWidth: 460, width: "100%" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--redpen)", marginBottom: 12 }}>
-          <AlertCircle size={22} />
-          <h2 id="delete-course-title" style={{ fontSize: "1.25rem", margin: 0, color: "inherit" }}>
-            Delete {course.code}?
-          </h2>
-        </div>
-        <p style={{ color: "var(--pencil)", margin: "0 0 16px" }}>
-          Are you sure you want to permanently delete <strong>{course.title}</strong>? All associated units, topics, lesson plans, sessions, and analytics will be permanently removed. This action cannot be undone.
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-box card" style={{ maxWidth: 440, padding: 24 }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ margin: "0 0 6px", fontSize: "1.15rem", fontWeight: 700, color: "var(--redpen)" }}>
+          Delete {course.code}?
+        </h3>
+        <p style={{ margin: "0 0 16px", fontSize: "0.85rem", color: "var(--pencil)", lineHeight: 1.5 }}>
+          This will permanently delete <strong>{course.title}</strong>, including its curriculum units, concepts, lesson plans, student enrollments, and test results.
         </p>
+
         {error && (
-          <p role="alert" style={{ color: "var(--redpen)", fontWeight: 600, marginBottom: 16 }}>
+          <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.1)", color: "var(--redpen)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", marginBottom: 12 }}>
             {error}
-          </p>
+          </div>
         )}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn"
-            style={{ background: "var(--redpen)", color: "#ffffff", border: "none" }}
-            onClick={confirmDelete}
-            disabled={busy}
-          >
-            {busy ? "Deleting…" : "Yes, delete course"}
-          </button>
-        </div>
+
+        <form onSubmit={handleDelete} style={{ display: "grid", gap: 12 }}>
+          <div>
+            <label className="label" style={{ fontSize: "0.8rem", marginBottom: 4 }}>
+              To confirm, type <strong style={{ color: "var(--ink)" }}>{course.code}</strong> below:
+            </label>
+            <input
+              type="text"
+              className="input"
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder={course.code}
+              autoFocus
+              required
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn" style={{ background: "var(--redpen)", color: "#ffffff", border: "none" }} disabled={busy}>
+              {busy ? "Deleting..." : "Permanently Delete"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
-

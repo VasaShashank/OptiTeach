@@ -15,6 +15,9 @@ from app.api.exports import router as exports_router
 from app.api.teaching_methods import router as teaching_methods_router
 from app.api.curriculum import router as curriculum_router
 from app.api.members import router as members_router
+from app.api.admin import router as admin_router
+from app.api.students import router as students_router
+from app.api.institutional_operations import router as institutional_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,6 +78,9 @@ app.include_router(exports_router, prefix=settings.API_PREFIX)
 app.include_router(teaching_methods_router, prefix=settings.API_PREFIX)
 app.include_router(curriculum_router, prefix=settings.API_PREFIX)
 app.include_router(members_router, prefix=settings.API_PREFIX)
+app.include_router(admin_router, prefix=settings.API_PREFIX)
+app.include_router(students_router, prefix=settings.API_PREFIX)
+app.include_router(institutional_router, prefix=settings.API_PREFIX)
 
 @app.get("/")
 def root():
